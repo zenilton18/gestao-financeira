@@ -10,7 +10,9 @@ use App\Services\ShopeeService;
 use App\Http\Controllers\ShopeeAuthController;
 use App\Models\ShopeeConnection;
 use App\Http\Controllers\Shopee\ShopeeProductController;
-
+use App\Http\Controllers\ShopeeDashboardController;
+use App\Http\Controllers\ShopeeOrderController;
+use App\Services\Shopee\ShopeeOrderService;
 
 Route::get('/', function () {
     return view('dashboard');
@@ -48,5 +50,24 @@ Route::prefix('shopee')->group(function () {
         '/produtos/{id}',
         [ShopeeProductController::class, 'atualizar']
     )->name('shopee.produtos.atualizar');
+    Route::get('/dashboard', [ShopeeDashboardController::class, 'index']
+)->name('shopee.dashboard');
+    
 
 });
+Route::prefix('shopee/orders')
+    ->group(function(){
+
+        Route::get(
+            '/lista',
+            [ShopeeOrderController::class,'index']
+        )
+        ->name('orders.index');
+
+        Route::get('/sync', [ShopeeOrderController::class, 'sync'])
+                ->name('shopee.orders.sync');
+        
+
+    });
+
+    
