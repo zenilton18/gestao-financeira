@@ -1,0 +1,257 @@
+
+/* ==========================================
+   NAVBAR
+========================================== */
+
+.navbar-custom{
+
+    height:75px;
+
+    background:white;
+
+    border-bottom:1px solid #ececec;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    padding:0 30px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.03);
+
+}
+
+
+/* ==========================================
+   ESQUERDA
+========================================== */
+
+.navbar-left{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+.btn-menu{
+
+    width:45px;
+
+    height:45px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#f4f6f9;
+
+    transition:.2s;
+
+}
+
+.btn-menu:hover{
+
+    background:#0d6efd;
+
+    color:white;
+
+}
+
+.page-title{
+
+    font-size:24px;
+
+    font-weight:700;
+
+    color:#343a40;
+
+}
+
+
+/* ==========================================
+   PESQUISA
+========================================== */
+
+.search-box{
+
+    width:350px;
+
+    height:45px;
+
+    border:1px solid #dee2e6;
+
+    border-radius:12px;
+
+    display:flex;
+
+    align-items:center;
+
+    padding:0 15px;
+
+    gap:10px;
+
+    background:white;
+
+}
+
+.search-box input{
+
+    border:none;
+
+    outline:none;
+
+    width:100%;
+
+    background:transparent;
+
+}
+
+.search-box i{
+
+    color:#6c757d;
+
+}
+
+
+/* ==========================================
+   DIREITA
+========================================== */
+
+.navbar-right{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+.icon-button{
+
+    width:45px;
+
+    height:45px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#f8f9fa;
+
+    position:relative;
+
+    transition:.2s;
+
+}
+
+.icon-button:hover{
+
+    background:#eef5ff;
+
+    color:#0d6efd;
+
+}
+
+.icon-button i{
+
+    font-size:18px;
+
+}
+
+.badge-notification{
+
+    position:absolute;
+
+    top:5px;
+
+    right:5px;
+
+    width:18px;
+
+    height:18px;
+
+    border-radius:50%;
+
+    background:#dc3545;
+
+    color:white;
+
+    font-size:10px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+
+/* ==========================================
+   PERFIL
+========================================== */
+
+.user-profile{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    cursor:pointer;
+
+    padding-left:15px;
+
+    border-left:1px solid #ececec;
+
+}
+
+.user-avatar{
+
+    width:42px;
+
+    height:42px;
+
+    border-radius:50%;
+
+    background:#0d6efd;
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-weight:bold;
+
+}
+
+
+/* ==========================================
+   RESPONSIVO
+========================================== */
+
+@media(max-width:992px){
+
+.search-box{
+
+    display:none;
+
+}
+
+.page-title{
+
+    font-size:18px;
+
+}
+
+}
