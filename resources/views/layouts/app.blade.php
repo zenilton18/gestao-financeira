@@ -1,85 +1,88 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
 
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-          <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>@yield('title', 'ERP Financeiro')</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ asset('css/navbar.css') }}">
+<link rel="stylesheet" href="{{ asset('css/sidebar.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
-          rel="stylesheet">
+    <title>
+        {{ config('app.name', 'ERP Financeiro') }}
+    </title>
 
-    <!-- Alpine -->
-    <script defer
-            src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- CSS -->
+    {{-- Bootstrap --}}
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
-    <link rel="stylesheet"
-          href="{{ asset('css/app.css') }}">
 
-    <link rel="stylesheet"
-          href="{{ asset('css/sidebar.css') }}">
+    {{-- Bootstrap Icons --}}
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet"
+    >
 
-    <link rel="stylesheet"
-          href="{{ asset('css/navbar.css') }}">
 
-    @stack('styles')
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js'
+    ])
+
 
 </head>
 
+
 <body>
 
-<div class="wrapper">
 
-    <!-- Sidebar -->
+<div class="d-flex">
 
-    @include('components.sidebar')
 
-    <!-- Área Principal -->
+    {{-- Sidebar ERP --}}
+    <x-sidebar />
 
-    <div class="main">
 
-        <!-- Navbar -->
 
-        @include('components.navbar')
+    <div class="flex-grow-1">
 
-        <!-- Conteúdo -->
 
-        <main class="content">
+        {{-- Navbar ERP --}}
+        <x-navbar />
+
+
+
+        <main class="p-4">
+
 
             @yield('content')
 
+
         </main>
 
-        <!-- Rodapé -->
-
-        <footer class="footer">
-
-            ERP Financeiro © {{ date('Y') }}
-
-        </footer>
 
     </div>
 
+
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<script src="{{ asset('js/app.js') }}"></script>
 
-@stack('scripts')
+
+<script 
+src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+
 
 </body>
+
 
 </html>

@@ -1,73 +1,164 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\FinanceiroController;
-use App\Models\User;
-use App\Services\TokenService;
-use Illuminate\Http\Request;
-use App\Services\Shopee\ShopeeAuthService;
-use App\Services\ShopeeService;
 use App\Http\Controllers\ShopeeAuthController;
-use App\Models\ShopeeConnection;
 use App\Http\Controllers\Shopee\ShopeeProductController;
 use App\Http\Controllers\ShopeeDashboardController;
 use App\Http\Controllers\ShopeeOrderController;
-use App\Services\Shopee\ShopeeOrderService;
+
+use App\Services\ShopeeService;
+
+
+/*
+|--------------------------------------------------------------------------
+| Página inicial
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/', function () {
-    return view('dashboard');
+    return redirect()->route('shopee.dashaboard');
 });
 
-Route::get('/shopee/connect', function(ShopeeService $service){
+
+/*
+|--------------------------------------------------------------------------
+| Autorização Shopee
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/shopee/connect', function (ShopeeService $service) {
 
     return redirect()->away(
         $service->getAuthorizationUrl()
     );
 
-});
-Route::get('/shopee/callback',[ShopeeAuthController::class, 'callback']);
-
-Route::get('/lancamento/cadastro', function () {
-    return view('cadastroLancamento');
-});
+})->name('shopee.connect');
 
 
-Route::prefix('shopee')->group(function () {
+Route::get('/shopee/callback', [
+    ShopeeAuthController::class,
+    'callback'
+])->name('shopee.callback');
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Área autenticada ERP
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Shopee
+    |--------------------------------------------------------------------------
+    */
 
     Route::get(
-        '/produtos/lista',
-        [ShopeeProductController::class, 'listarProdutosComDetalhes']
-    )->name('shopee.produtos.lista');
+        '/shopee/dashboard',
+        [ShopeeDashboardController::class, 'index']
+    )->name('shopee.dashboard');
 
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Produtos Shopee
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('shopee/produtos')
+        ->group(function () {
+
+            Route::get(
+                '/sincronizar',
+                [ShopeeProductController::class, 'sincronizarProdutos']
+            )->name('shopee.produtos.sincronizar');
+
+            Route::get(
+                '/lista',
+                [ShopeeProductController::class, 'listarProdutosComDetalhes']
+            )->name('shopee.produtos.lista');
+
+
+
+            Route::get(
+                '/{id}/editar',
+                [ShopeeProductController::class, 'editar']
+            )->name('shopee.produtos.editar');
+
+
+            Route::put(
+                '/{id}',
+                [ShopeeProductController::class, 'atualizar']
+            )->name('shopee.produtos.atualizar');
+
+
+        });
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pedidos Shopee
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('shopee/orders')
+        ->group(function () {
+
+
+            Route::get(
+                '/lista',
+                [ShopeeOrderController::class, 'index']
+            )->name('orders.index');
+
+
+            Route::get(
+                '/sync',
+                [ShopeeOrderController::class, 'sync']
+            )->name('shopee.orders.sync');
+            Route::get(
+                '/{order}',
+                [ShopeeOrderController::class, 'show']
+            )->name('shopee.orders.show');
+            Route::post(
+                '/{order}/sync',
+                [ShopeeOrderController::class,'syncOne']
+            )
+            ->name('shopee.orders.syncOne');
+
+
+        });
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Financeiro
+    |--------------------------------------------------------------------------
+    */
 
     Route::get(
-        '/produtos/{id}/editar',
-        [ShopeeProductController::class, 'editar']
-    )->name('shopee.produtos.editar');
+        '/lancamento/cadastro',
+        function () {
+            return view('cadastroLancamento');
+        }
+    )->name('financeiro.lancamento');
 
-
-    Route::put(
-        '/produtos/{id}',
-        [ShopeeProductController::class, 'atualizar']
-    )->name('shopee.produtos.atualizar');
-    Route::get('/dashboard', [ShopeeDashboardController::class, 'index']
-)->name('shopee.dashboard');
-    
 
 });
-Route::prefix('shopee/orders')
-    ->group(function(){
 
-        Route::get(
-            '/lista',
-            [ShopeeOrderController::class,'index']
-        )
-        ->name('orders.index');
 
-        Route::get('/sync', [ShopeeOrderController::class, 'sync'])
-                ->name('shopee.orders.sync');
-        
+/*
+|--------------------------------------------------------------------------
+| Autenticação Breeze
+|--------------------------------------------------------------------------
+*/
 
-    });
-
-    
+require __DIR__.'/auth.php';

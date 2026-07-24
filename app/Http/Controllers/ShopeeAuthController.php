@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Models\ShopeeConnection;
 use App\Services\Shopee\ShopeeAuthService;
 
-
 class ShopeeAuthController extends Controller
 {
 
@@ -24,12 +23,15 @@ class ShopeeAuthController extends Controller
 
         if (!empty($token['error'])) {
 
-            return response()->json([
-                'error' => $token['error'],
-                'message' => $token['message']
-            ]);
+            return redirect()
+                ->route('shopee.dashboard')
+                ->with(
+                    'error',
+                    'Erro ao conectar Shopee: '.$token['message']
+                );
 
         }
+
 
 
         $connection = ShopeeConnection::updateOrCreate(
@@ -39,9 +41,12 @@ class ShopeeAuthController extends Controller
             ],
 
             [
+
                 'access_token' => $token['access_token'],
 
+
                 'refresh_token' => $token['refresh_token'],
+
 
                 'expires_at' => now()
                     ->addSeconds($token['expire_in'])
@@ -51,13 +56,15 @@ class ShopeeAuthController extends Controller
         );
 
 
-        return response()->json([
 
-            'message' => 'Shopee conectada com sucesso',
+        return redirect()
 
-            'connection' => $connection
+            ->route('shopee.dashboard')
 
-        ]);
+            ->with(
+                'success',
+                'Shopee conectada com sucesso! Loja '.$connection->shop_id.' ativa.'
+            );
 
     }
 

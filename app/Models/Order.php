@@ -9,6 +9,12 @@ class Order extends Model
 {
 
     protected $fillable = [
+        'payment_method',
+        'shipping_fee',
+        'discount_amount',
+        'tracking_number',
+        'shipping_carrier',
+        'shipping_address',
 
         'shopee_order_id',
         'status',
@@ -31,7 +37,8 @@ class Order extends Model
 
     protected $casts = [
         'raw_data'=>'array',
-        'order_date'=>'datetime'
+        'order_date'=>'datetime',
+        'shipping_address'=>'array'
     ];
 
 

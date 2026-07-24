@@ -109,12 +109,38 @@ class ShopeeOrderService
 
 
 
+    /**
+     * Sincroniza somente um pedido
+     */
+    public function syncOrder(string $orderSn)
+    {
+        $detail = $this->getOrderDetail($orderSn);
 
+
+        if(empty($detail)){
+
+            throw new \Exception(
+                'Pedido não encontrado na Shopee'
+            );
+
+        }
+
+
+        $this->saveOrder($detail);
+
+
+        return Order::where(
+            'shopee_order_id',
+            $orderSn
+        )
+        ->first();
+
+    }
 
     /**
      * Busca detalhes do pedido
      */
-    private function getOrderDetail(string $orderSn)
+    public function getOrderDetail(string $orderSn)
     {
 
 
@@ -127,8 +153,14 @@ class ShopeeOrderService
                 'order_sn_list'=>$orderSn,
 
 
-                'response_optional_fields'=>
-                'buyer_user_id,buyer_username,item_list,payment_info,shipping_info'
+               'response_optional_fields'=>
+                    'buyer_user_id,
+                    buyer_username,
+                    item_list,
+                    payment_info,
+                    shipping_info,
+                    recipient_address,
+                    package_list'
 
             ]
 
@@ -179,6 +211,12 @@ class ShopeeOrderService
                             $data['create_time']
                         )
                         : null,
+                    'payment_method' => 
+                        $data['payment_method'] ?? null,
+
+
+                        'shipping_address' =>
+                        $data['recipient_address'] ?? null,
 
                     'raw_data' => $data
                 ]
