@@ -18,6 +18,9 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => 'Administrador',
                 'password' => Hash::make('12345678'),
+                'device_name' => 'erp',
+                'ip_andress' => 1234646,
+                'expires_at' => '',
             ]
         );
     }

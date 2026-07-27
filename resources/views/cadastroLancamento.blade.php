@@ -44,6 +44,15 @@
                             <label class="form-label">Data Emissão</label>
                             <input type="date" class="form-control" x-model="data_emissao" >
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Categoria</label>
+
+                            <select class="form-select" x-model="categoria_id">
+                                <option value="">Selecione</option>
+                                <option value="1">Entrada</option>
+                                <option value="2">Saída</option>
+                            </select>
+                        </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Observação</label>
@@ -111,7 +120,7 @@
                 </tr>
 
                 <!-- DADOS PAGAMENTO -->
-                <tr x-show="parcela.situacao === 'pago' || parcela.mostrarPagamento" x-transition>
+                <tr x-show="parcela.situacao === '2' || parcela.mostrarPagamento" x-transition>
                     <td colspan="5" class="border-0">
                         <div class="card bg-light mt-2 mb-3 shadow-sm">
                             <div class="card-header bg-secondary bg-opacity-10">

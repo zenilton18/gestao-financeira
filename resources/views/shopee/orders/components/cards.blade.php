@@ -14,7 +14,7 @@
 
                 <h2 class="fw-bold mt-2">
 
-                    {{ number_format($orders->total(),0,',','.') }}
+                    {{ number_format($stats['total'],0,',','.') }}
 
                 </h2>
 
@@ -46,8 +46,8 @@
 
                 <h2 class="fw-bold mt-2 text-success">
 
-                    R$
-                    {{ number_format($orders->sum('total_amount'),2,',','.') }}
+                
+                    R$ {{ number_format($stats['faturamento'],2,',','.') }}
 
                 </h2>
 
@@ -79,8 +79,8 @@
 
                 <h2 class="fw-bold mt-2 text-primary">
 
-                    R$
-                    {{ number_format($orders->sum('profit'),2,',','.') }}
+                
+                   R$ {{ number_format($stats['lucro'],2,',','.') }}
 
                 </h2>
 
@@ -112,9 +112,8 @@
 
                 <h2 class="fw-bold mt-2 text-warning">
 
-                    R$
-
-                    {{ number_format($orders->avg('total_amount') ?? 0,2,',','.') }}
+                
+                 R$ {{ number_format($stats['ticket_medio'] ?? 0,2,',','.') }}
 
                 </h2>
 

@@ -18,18 +18,135 @@ class ShopeeOrderController extends Controller
     }
 
 
+public function index()
+{
+    $query = \App\Models\Order::with('items.product');
 
-    public function index()
-    {
-        $orders = \App\Models\Order::with('items.product')
-            ->latest()
-            ->paginate(20);
 
-        return view(
-            'shopee.orders.lista',
-            compact('orders')
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | Busca
+    |--------------------------------------------------------------------------
+    */
+
+    if (request()->filled('search')) {
+
+        $search = request('search');
+
+        $query->where(function ($q) use ($search) {
+
+            $q->where(
+                'shopee_order_id',
+                'like',
+                "%{$search}%"
+            )
+            ->orWhere(
+                'buyer_username',
+                'like',
+                "%{$search}%"
+            );
+
+        });
+
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status
+    |--------------------------------------------------------------------------
+    */
+
+    if (request()->filled('status')) {
+
+        $query->where(
+            'status',
+            request('status')
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Período
+    |--------------------------------------------------------------------------
+    */
+
+    if (request()->filled('periodo')) {
+
+        match (request('periodo')) {
+
+            'hoje' => $query->whereDate(
+                'order_date',
+                today()
+            ),
+
+            'mes' => $query->whereMonth(
+                'order_date',
+                now()->month
+            ),
+
+            '30' => $query->where(
+                'order_date',
+                '>=',
+                now()->subDays(30)
+            ),
+
+            default => null
+
+        };
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cards do Dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    $statsQuery = clone $query;
+
+
+    $stats = [
+        'total' => $statsQuery->count(),
+
+        'faturamento' => $statsQuery->sum(
+            'total_amount'
+        ),
+
+        'lucro' => $statsQuery->sum(
+            'profit'
+        ),
+
+        'ticket_medio' => $statsQuery->avg(
+            'total_amount'
+        ),
+    ];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lista de pedidos
+    |--------------------------------------------------------------------------
+    */
+
+    $orders = $query
+        ->latest()
+        ->paginate(20)
+        ->withQueryString();
+
+
+
+    return view(
+        'shopee.orders.lista',
+        compact(
+            'orders',
+            'stats'
+        )
+    );
+}
 
 
 

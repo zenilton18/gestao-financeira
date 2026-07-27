@@ -10,47 +10,21 @@ use App\Http\Controllers\ShopeeOrderController;
 
 use App\Services\ShopeeService;
 
-
-/*
-|--------------------------------------------------------------------------
-| Página inicial
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/', function () {
-    return redirect()->route('shopee.dashaboard');
-});
-
-
-/*
-|--------------------------------------------------------------------------
-| Autorização Shopee
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/shopee/connect', function (ShopeeService $service) {
-
-    return redirect()->away(
-        $service->getAuthorizationUrl()
-    );
-
-})->name('shopee.connect');
-
-
-Route::get('/shopee/callback', [
-    ShopeeAuthController::class,
-    'callback'
-])->name('shopee.callback');
-
-
-
-/*
-|--------------------------------------------------------------------------
-| Área autenticada ERP
-|--------------------------------------------------------------------------
-*/
-
 Route::middleware('auth')->group(function () {
+
+    Route::get('/shopee/connect', function (ShopeeService $service) {
+
+        return redirect()->away(
+            $service->getAuthorizationUrl()
+        );
+
+    })->name('shopee.connect');
+
+
+    Route::get('/shopee/callback', [
+        ShopeeAuthController::class,
+        'callback'
+    ])->name('shopee.callback');
 
 
     /*
@@ -58,6 +32,10 @@ Route::middleware('auth')->group(function () {
     | Dashboard Shopee
     |--------------------------------------------------------------------------
     */
+
+    Route::get('/', function () {
+        return redirect()->route('shopee.dashboard');
+    });
 
     Route::get(
         '/shopee/dashboard',
@@ -128,10 +106,10 @@ Route::middleware('auth')->group(function () {
                 [ShopeeOrderController::class, 'show']
             )->name('shopee.orders.show');
             Route::post(
-                '/{order}/sync',
-                [ShopeeOrderController::class,'syncOne']
-            )
-            ->name('shopee.orders.syncOne');
+            '/{order}/sync',
+            [ShopeeOrderController::class,'syncOne']
+        )
+        ->name('shopee.orders.syncOne');
 
 
         });
@@ -150,6 +128,10 @@ Route::middleware('auth')->group(function () {
             return view('cadastroLancamento');
         }
     )->name('financeiro.lancamento');
+    Route::post(
+        '/financeiro/salvar',
+        [FinanceiroController::class, 'store']
+    )->name('financeiro.salvar');
 
 
 });

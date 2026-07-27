@@ -38,7 +38,7 @@ class ShopeeOrderService
                 $order['order_sn']
             );
 
-
+      
             if(empty($detail)){
                 continue;
             }
@@ -137,9 +137,7 @@ class ShopeeOrderService
 
     }
 
-    /**
-     * Busca detalhes do pedido
-     */
+   
     public function getOrderDetail(string $orderSn)
     {
 
@@ -185,10 +183,6 @@ class ShopeeOrderService
 
     }
 
-
-
-
-
  
     private function saveOrder(array $data)
     {
@@ -226,6 +220,9 @@ class ShopeeOrderService
             // Totais do pedido
             $totalAmount = 0;
             $productCost = 0;
+            echo('<pre>');
+            print_r($data);
+            echo('</pre>'); die();
 
             foreach ($data['item_list'] ?? [] as $item) {
 

@@ -12,12 +12,14 @@ class FinanceiroController extends Controller
 {
     public function store(Request $request)
     {
+    
    
         $validated = $request->validate([
             'data_emissao' => 'required|date',
             'observacao' => 'nullable|string|max:255',
             'valor_total' => 'required|numeric|min:0',
             'quantidade_parcelas' => 'required|integer|min:1',
+            'categoria_id' => 'required|in:1,2',
 
             'parcelas' => 'required|array|min:1',
 
