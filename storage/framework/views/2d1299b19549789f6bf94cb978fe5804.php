@@ -1,0 +1,1 @@
+<?php /**PATH C:\projetos\gestao-financeira\resources\views\layouts\components\header.blade.php ENDPATH**/ ?>

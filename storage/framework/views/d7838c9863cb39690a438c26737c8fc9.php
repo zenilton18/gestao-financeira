@@ -1,0 +1,1 @@
+<?php /**PATH C:\projetos\gestao-financeira\resources\views\layouts\components\status-badge.blade.php ENDPATH**/ ?>
