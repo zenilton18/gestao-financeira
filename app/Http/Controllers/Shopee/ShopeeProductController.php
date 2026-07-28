@@ -36,6 +36,8 @@ class ShopeeProductController extends Controller
      */
     private function listarProdutos()
     {
+       
+       
         return $this->api->get(
             '/api/v2/product/get_item_list',
             [

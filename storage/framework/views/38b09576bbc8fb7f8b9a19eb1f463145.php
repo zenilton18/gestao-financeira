@@ -1,1 +1,0 @@
-<?php /**PATH C:\projetos\gestao-financeira\resources\views\layouts\components\cards.blade.php ENDPATH**/ ?>

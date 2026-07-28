@@ -7,6 +7,8 @@ return [
     'partner_key'=>env('SHOPEE_PARTNER_KEY'),
 
 
-    'base_url'=>'https://openplatform.sandbox.test-stable.shopee.sg'
+  'base_url' => env('SHOPEE_ENV') === 'production'
+        ? 'https://openplatform.shopee.com'
+        : 'https://openplatform.sandbox.test-stable.shopee.sg',
 
 ];

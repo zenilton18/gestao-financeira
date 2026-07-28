@@ -24,7 +24,7 @@ class ShopeeService
         $path = "/api/v2/shop/auth_partner";
 
 
-        $redirectUrl = "https://gestao-financeira.test/shopee/callback";
+        $redirectUrl = "https://meulucropro/shopee/callback";
 
 
         $timestamp = time();
