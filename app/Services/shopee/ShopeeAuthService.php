@@ -4,6 +4,7 @@ namespace App\Services\Shopee;
 
 use App\Models\ShopeeConnection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class ShopeeAuthService
@@ -54,41 +55,68 @@ class ShopeeAuthService
         $url = $this->baseUrl . $path;
 
 
+        Log::info('Shopee - solicitando access token', [
+            'url' => $url,
+            'partner_id' => $this->partnerId,
+            'shop_id' => $shopId
+        ]);
+
+
         $response = Http::withHeaders([
             'Content-Type' => 'application/json'
         ])
-        ->post($url . '?' . http_build_query([
+        ->post(
+            $url . '?' . http_build_query([
 
-            'partner_id' => $this->partnerId,
+                'partner_id' => $this->partnerId,
 
-            'timestamp' => $timestamp,
+                'timestamp' => $timestamp,
 
-            'sign' => $sign
+                'sign' => $sign
 
-        ]), [
+            ]),
+            [
 
-            'code' => $code,
+                'code' => $code,
 
-            'shop_id' => (int) $shopId,
+                'shop_id' => (int) $shopId,
 
-            'partner_id' => $this->partnerId
+                'partner_id' => $this->partnerId
 
-        ]);
+            ]
+        );
 
 
         $data = $response->json();
 
 
+        Log::info('Shopee - resposta token', [
+            'status' => $response->status(),
+            'response' => $data
+        ]);
+
+
+        if (!$response->successful()) {
+
+            throw new Exception(
+                'Erro HTTP Shopee: ' . $response->status()
+            );
+
+        }
+
+
         if (!empty($data['error'])) {
 
             throw new Exception(
-                $data['message']
+                'Shopee: ' .
+                ($data['message'] ?? $data['error'])
             );
 
         }
 
 
         return $data;
+
     }
 
 
@@ -126,33 +154,55 @@ class ShopeeAuthService
         $response = Http::withHeaders([
             'Content-Type' => 'application/json'
         ])
-        ->post($url . '?' . http_build_query([
+        ->post(
+            $url . '?' . http_build_query([
 
-            'partner_id' => $this->partnerId,
+                'partner_id' => $this->partnerId,
 
-            'timestamp' => $timestamp,
+                'timestamp' => $timestamp,
 
-            'sign' => $sign
+                'sign' => $sign
 
-        ]), [
+            ]),
+            [
 
-            'refresh_token' => $connection->refresh_token,
+                'refresh_token' =>
+                    $connection->refresh_token,
 
-            'shop_id' => (int) $connection->shop_id,
+                'shop_id' =>
+                    (int) $connection->shop_id,
 
-            'partner_id' => $this->partnerId
+                'partner_id' =>
+                    $this->partnerId
 
-        ]);
+            ]
+        );
 
 
         $data = $response->json();
 
 
+        Log::info('Shopee - refresh token', [
+            'status' => $response->status(),
+            'response' => $data
+        ]);
+
+
+
+        if (!$response->successful()) {
+
+            throw new Exception(
+                'Erro HTTP Shopee: ' . $response->status()
+            );
+
+        }
+
 
         if (!empty($data['error'])) {
 
             throw new Exception(
-                $data['message']
+                'Shopee: ' .
+                ($data['message'] ?? $data['error'])
             );
 
         }
@@ -161,12 +211,18 @@ class ShopeeAuthService
 
         $connection->update([
 
-            'access_token' => $data['access_token'],
+            'access_token' =>
+                $data['access_token'],
 
-            'refresh_token' => $data['refresh_token'],
 
-            'expires_at' => now()
-                ->addSeconds($data['expire_in'])
+            'refresh_token' =>
+                $data['refresh_token'],
+
+
+            'expires_at' =>
+                now()->addSeconds(
+                    $data['expire_in']
+                )
 
         ]);
 
@@ -175,4 +231,5 @@ class ShopeeAuthService
         return $connection->fresh();
 
     }
+
 }

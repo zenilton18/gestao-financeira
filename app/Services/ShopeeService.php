@@ -18,39 +18,18 @@ class ShopeeService
     }
 
 
-    public function getAuthorizationUrl()
+    public function getAuthorizationUrl(): string
     {
 
-        $path = "/api/v2/shop/auth_partner";
+        $url = 'https://open.shopee.com.br/auth';
 
 
-        $redirectUrl = "https://meulucropro/shopee/callback";
+        $redirectUrl = 'https://meulucropro.com.br/shopee/callback';
 
 
-        $timestamp = time();
-
-
-        $baseString = sprintf(
-            "%s%s%s",
-            $this->partnerId,
-            $path,
-            $timestamp
-        );
-
-
-        $sign = hash_hmac(
-            'sha256',
-            $baseString,
-            $this->partnerKey
-        );
-
-
-        return config('shopee.base_url')
-            .$path
-            .'?partner_id='.$this->partnerId
-            .'&timestamp='.$timestamp
-            .'&sign='.$sign
-            .'&redirect='.$redirectUrl;
+        return $url
+            . '?partner_id=' . $this->partnerId
+            . '&redirect=' . urlencode($redirectUrl);
 
     }
 
