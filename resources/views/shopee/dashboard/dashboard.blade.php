@@ -1,114 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
+
 @if(session('success'))
 
-{{-- Status Integração Shopee --}}
-
-<div class="row mb-4">
-
-    <div class="col-xl-4 col-md-6">
-
-
-        <div class="card shadow-sm border-0">
-
-
-            <div class="card-body">
-
-
-                <div class="d-flex justify-content-between align-items-center">
-
-
-                    <div>
-
-
-                        <small class="text-muted">
-                            INTEGRAÇÃO SHOPEE
-                        </small>
-
-
-                        @php
-                            $connection = \App\Models\ShopeeConnection::latest()->first();
-                        @endphp
-
-
-
-                        @if($connection)
-
-
-                            <h4 class="fw-bold mt-2 text-success">
-
-                                <i class="bi bi-check-circle"></i>
-
-                                Conectada
-
-                            </h4>
-
-
-                            <span class="text-muted">
-
-                                Loja:
-                                {{ $connection->shop_id }}
-
-                            </span>
-
-
-                        @else
-
-
-                            <h4 class="fw-bold mt-2 text-danger">
-
-                                <i class="bi bi-x-circle"></i>
-
-                                Não conectada
-
-                            </h4>
-
-
-                            <a href="/shopee/connect"
-                               class="btn btn-primary btn-sm mt-2">
-
-                                Conectar Loja
-
-                            </a>
-
-
-                        @endif
-
-
-                    </div>
-
-
-                    <div class="fs-1 text-primary">
-
-                        <i class="bi bi-shop"></i>
-
-                    </div>
-
-
-                </div>
-
-
-            </div>
-
-
-        </div>
-
-
-    </div>
-
-
+<div class="alert alert-success shadow-sm">
+    <i class="bi bi-check-circle"></i>
+    {{ session('success') }}
 </div>
 
 @endif
-
 
 
 @if(session('error'))
 
 <div class="alert alert-danger shadow-sm">
 
-    <i class="bi bi-exclamation-triangle">ddddddddddddddd</i>
+    <i class="bi bi-exclamation-triangle"></i>
 
     {{ session('error') }}
 
@@ -116,530 +24,536 @@
 
 @endif
 
+
+
 <div class="container-fluid">
 
 
-    {{-- Cabeçalho --}}
+{{-- Cabeçalho --}}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-
-        <div>
-
-            <h2 class="fw-bold mb-1">
-                Dashboard Shopee
-            </h2>
-
-            <span class="text-muted">
-                Visão financeira e operacional
-            </span>
-
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
 
 
-        {{-- Filtro período --}}
+    <div>
 
-        <div class="d-flex gap-2">
-
-
-            <select class="form-select">
-
-                <option>
-                    Hoje
-                </option>
-
-                <option>
-                    Ontem
-                </option>
-
-                <option selected>
-                    Últimos 30 dias
-                </option>
-
-                <option>
-                    Este mês
-                </option>
-
-                <option>
-                    Mês anterior
-                </option>
-
-                <option>
-                    Personalizado
-                </option>
-
-            </select>
+        <h2 class="fw-bold mb-1">
+            Dashboard Shopee
+        </h2>
 
 
-            <button class="btn btn-primary">
-
-                Filtrar
-
-            </button>
-
-
-        </div>
+        <span class="text-muted">
+            Visão financeira e operacional
+        </span>
 
 
     </div>
 
 
 
+    {{-- Filtro período --}}
 
-    {{-- Cards financeiros --}}
+    <form action="{{ route('shopee.dashboard') }}"
+          method="GET"
+          class="d-flex gap-2">
 
 
-    <div class="row g-4">
+        <select name="periodo"
+                class="form-select">
 
 
-        {{-- Faturamento --}}
+            <option value="today"
+                {{ request('periodo','today') == 'today' ? 'selected' : '' }}>
+                Hoje
+            </option>
 
-        <div class="col-xl-3 col-md-6">
 
-            <div class="card shadow-sm border-0 h-100">
+            <option value="yesterday"
+                {{ request('periodo') == 'yesterday' ? 'selected' : '' }}>
+                Ontem
+            </option>
 
-                <div class="card-body">
 
-                    <small class="text-muted">
-                        FATURAMENTO
-                    </small>
+            <option value="30"
+                {{ request('periodo') == '30' ? 'selected' : '' }}>
+                Últimos 30 dias
+            </option>
 
 
-                    <h2 class="fw-bold mt-2">
-                        R$ 15.824,35
-                    </h2>
+            <option value="month"
+                {{ request('periodo') == 'month' ? 'selected' : '' }}>
+                Este mês
+            </option>
 
 
-                    <span class="text-success">
-                        ↑ 12% período anterior
-                    </span>
+            <option value="last_month"
+                {{ request('periodo') == 'last_month' ? 'selected' : '' }}>
+                Mês anterior
+            </option>
 
 
-                </div>
+        </select>
 
-            </div>
 
-        </div>
+        <button class="btn btn-primary">
+            Filtrar
+        </button>
 
 
+    </form>
 
-        {{-- Custo produtos --}}
 
-        <div class="col-xl-3 col-md-6">
+</div>
 
-            <div class="card shadow-sm border-0 h-100">
 
-                <div class="card-body">
 
 
-                    <small class="text-muted">
-                        CUSTO PRODUTOS
-                    </small>
 
+{{-- Cards Financeiros --}}
 
-                    <h2 class="fw-bold mt-2 text-danger">
+<div class="row g-4">
 
-                        R$ 5.200,00
 
-                    </h2>
 
+{{-- Faturamento --}}
 
-                    <span class="text-muted">
+<div class="col-xl-3 col-md-6">
 
-                        Custo mercadoria
+<div class="card shadow-sm border-0 h-100">
 
-                    </span>
+<div class="card-body">
 
+<small class="text-muted">
+FATURAMENTO
+</small>
 
-                </div>
 
-            </div>
+<h2 class="fw-bold mt-2">
 
-        </div>
+R$
+{{ number_format($cards['faturamento'] ?? 0,2,',','.') }}
 
+</h2>
 
 
+</div>
 
-        {{-- Taxas Shopee --}}
+</div>
 
-        <div class="col-xl-3 col-md-6">
+</div>
 
-            <div class="card shadow-sm border-0 h-100">
 
-                <div class="card-body">
 
 
-                    <small class="text-muted">
-                        TAXAS SHOPEE
-                    </small>
 
 
-                    <h2 class="fw-bold mt-2 text-warning">
+{{-- Custo Produtos --}}
 
-                        R$ 1.235,00
+<div class="col-xl-3 col-md-6">
 
-                    </h2>
+<div class="card shadow-sm border-0 h-100">
 
+<div class="card-body">
 
-                    <span class="text-muted">
 
-                        Comissão + serviços
+<small class="text-muted">
+CUSTO PRODUTOS
+</small>
 
-                    </span>
 
+<h2 class="fw-bold mt-2 text-danger">
 
-                </div>
+R$
+{{ number_format($cards['custo_produtos'] ?? 0,2,',','.') }}
 
-            </div>
+</h2>
 
-        </div>
 
+<span class="text-muted">
+Mercadoria vendida
+</span>
 
 
+</div>
 
-        {{-- Ads --}}
+</div>
 
-        <div class="col-xl-3 col-md-6">
+</div>
 
-            <div class="card shadow-sm border-0 h-100">
 
-                <div class="card-body">
 
 
-                    <small class="text-muted">
-                        CUSTO ADS
-                    </small>
 
 
-                    <h2 class="fw-bold mt-2 text-danger">
+{{-- Taxas Shopee --}}
 
-                        R$ 800,00
+<div class="col-xl-3 col-md-6">
 
-                    </h2>
+<div class="card shadow-sm border-0 h-100">
 
+<div class="card-body">
 
-                    <span class="text-muted">
 
-                        Investimento anúncios
+<small class="text-muted">
+TAXAS SHOPEE
+</small>
 
-                    </span>
 
+<h2 class="fw-bold mt-2 text-warning">
 
-                </div>
+R$
+{{ number_format($cards['taxas_marketplace'] ?? 0,2,',','.') }}
 
-            </div>
+</h2>
 
-        </div>
 
+<span class="text-muted">
+Comissão estimada
+</span>
 
 
+</div>
 
-        {{-- Lucro bruto --}}
+</div>
 
+</div>
 
-        <div class="col-xl-3 col-md-6">
 
 
-            <div class="card shadow-sm border-0 h-100">
 
 
-                <div class="card-body">
 
+{{-- Valor Líquido --}}
 
-                    <small class="text-muted">
-                        LUCRO BRUTO
-                    </small>
+<div class="col-xl-3 col-md-6">
 
+<div class="card shadow-sm border-0 h-100">
 
-                    <h2 class="fw-bold mt-2 text-success">
+<div class="card-body">
 
-                        R$ 9.389,35
 
-                    </h2>
+<small class="text-muted">
+VALOR LÍQUIDO
+</small>
 
 
-                    <span class="text-muted">
+<h2 class="fw-bold mt-2 text-info">
 
-                        Antes dos Ads
+R$
+{{ number_format($cards['valor_liquido_estimado'] ?? 0,2,',','.') }}
 
-                    </span>
+</h2>
 
 
-                </div>
+<span class="text-muted">
+Após taxas e operação
+</span>
 
 
-            </div>
+</div>
 
+</div>
 
-        </div>
+</div>
 
 
 
 
-        {{-- Lucro pós Ads --}}
 
 
-        <div class="col-xl-3 col-md-6">
+{{-- Lucro Bruto --}}
 
+<div class="col-xl-3 col-md-6">
 
-            <div class="card shadow-sm border-0 h-100">
+<div class="card shadow-sm border-0 h-100">
 
+<div class="card-body">
 
-                <div class="card-body">
 
+<small class="text-muted">
+LUCRO BRUTO
+</small>
 
-                    <small class="text-muted">
-                        LUCRO PÓS ADS
-                    </small>
 
+<h2 class="fw-bold mt-2 text-success">
 
-                    <h2 class="fw-bold mt-2 text-primary">
+R$
+{{ number_format($cards['lucro_bruto'] ?? 0,2,',','.') }}
 
-                        R$ 8.589,35
+</h2>
 
-                    </h2>
 
+<span class="text-muted">
+Antes dos custos operacionais
+</span>
 
-                    <span class="text-muted">
 
-                        Lucro real
+</div>
 
-                    </span>
+</div>
 
+</div>
 
-                </div>
 
 
-            </div>
 
 
-        </div>
 
+{{-- Lucro Líquido --}}
 
+<div class="col-xl-3 col-md-6">
 
+<div class="card shadow-sm border-0 h-100">
 
-        {{-- Margem --}}
+<div class="card-body">
 
 
-        <div class="col-xl-3 col-md-6">
+<small class="text-muted">
+LUCRO LÍQUIDO
+</small>
 
 
-            <div class="card shadow-sm border-0 h-100">
+<h2 class="fw-bold mt-2 text-primary">
 
+R$
+{{ number_format($cards['lucro_liquido'] ?? 0,2,',','.') }}
 
-                <div class="card-body">
+</h2>
 
 
-                    <small class="text-muted">
-                        MARGEM MÉDIA
-                    </small>
+<span class="text-muted">
+Resultado final
+</span>
 
 
-                    <h2 class="fw-bold mt-2">
+</div>
 
-                        54%
+</div>
 
-                    </h2>
+</div>
 
 
-                    <span class="text-success">
 
-                        Excelente
 
-                    </span>
 
 
-                </div>
+{{-- Margem --}}
 
+<div class="col-xl-3 col-md-6">
 
-            </div>
+<div class="card shadow-sm border-0 h-100">
 
+<div class="card-body">
 
-        </div>
 
+<small class="text-muted">
+MARGEM
+</small>
 
 
+<h2 class="fw-bold mt-2">
 
-        {{-- Pedidos --}}
+{{ number_format($cards['margem'] ?? 0,2,',','.') }}%
 
+</h2>
 
-        <div class="col-xl-3 col-md-6">
 
+<span class="text-success">
+Rentabilidade
+</span>
 
-            <div class="card shadow-sm border-0 h-100">
 
+</div>
 
-                <div class="card-body">
+</div>
 
+</div>
 
-                    <small class="text-muted">
-                        PEDIDOS
-                    </small>
 
 
-                    <h2 class="fw-bold mt-2">
 
-                        358
 
-                    </h2>
 
+{{-- Pedidos --}}
 
-                    <span class="text-primary">
+<div class="col-xl-3 col-md-6">
 
-                        18 hoje
+<div class="card shadow-sm border-0 h-100">
 
-                    </span>
+<div class="card-body">
 
 
-                </div>
+<small class="text-muted">
+PEDIDOS
+</small>
 
 
-            </div>
+<h2 class="fw-bold mt-2">
 
+{{ number_format($cards['pedidos'] ?? 0,0,',','.') }}
 
-        </div>
+</h2>
 
 
-    </div>
+</div>
 
+</div>
 
+</div>
 
 
 
-    {{-- Gráficos --}}
+</div>
 
 
-    <div class="row mt-4">
 
 
-        <div class="col-lg-8">
 
 
-            <div class="card shadow-sm border-0">
 
+{{-- Indicadores --}}
 
-                <div class="card-header bg-white">
+<div class="row mt-4">
 
-                    <strong>
-                        Evolução financeira
-                    </strong>
 
-                </div>
+<div class="col-lg-4">
 
 
-                <div class="card-body">
+<div class="card shadow-sm border-0">
 
 
-                    <div style="
-                        height:350px;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        color:#999;
-                    ">
+<div class="card-header bg-white">
 
+<strong>
+Indicadores
+</strong>
 
-                        Gráfico de vendas por período
+</div>
 
 
-                    </div>
+<div class="card-body">
 
 
-                </div>
+<table class="table">
 
 
-            </div>
+<tr>
 
+<td>
+Ticket médio
+</td>
 
-        </div>
 
+<td class="text-end fw-bold">
 
+R$
+{{ number_format($cards['ticket_medio'] ?? 0,2,',','.') }}
 
-        <div class="col-lg-4">
+</td>
 
 
-            <div class="card shadow-sm border-0">
+</tr>
 
 
-                <div class="card-header bg-white">
 
-                    <strong>
-                        Indicadores
-                    </strong>
+<tr>
 
-                </div>
+<td>
+Custo operacional
+</td>
 
 
-                <div class="card-body">
+<td class="text-end fw-bold">
 
+R$
+{{ number_format($cards['custo_operacional'] ?? 0,2,',','.') }}
 
-                    <table class="table">
+</td>
 
 
-                        <tr>
+</tr>
 
-                            <td>
-                                Ticket médio
-                            </td>
 
-                            <td class="text-end fw-bold">
-                                R$ 44,20
-                            </td>
 
-                        </tr>
+<tr>
 
+<td>
+Ads
+</td>
 
-                        <tr>
 
-                            <td>
-                                ROAS
-                            </td>
+<td class="text-end fw-bold">
 
-                            <td class="text-end fw-bold text-success">
-                                4,5
-                            </td>
+R$
+{{ number_format($cards['ads'] ?? 0,2,',','.') }}
 
-                        </tr>
+</td>
 
 
-                        <tr>
+</tr>
 
-                            <td>
-                                ACOS
-                            </td>
 
-                            <td class="text-end fw-bold">
-                                22%
-                            </td>
 
-                        </tr>
+</table>
 
 
-                        <tr>
+</div>
 
-                            <td>
-                                Cancelamentos
-                            </td>
 
-                            <td class="text-end text-danger fw-bold">
-                                6
-                            </td>
+</div>
 
-                        </tr>
 
+</div>
 
-                    </table>
 
 
-                </div>
 
 
-            </div>
+<div class="col-lg-8">
 
 
-        </div>
+<div class="card shadow-sm border-0">
 
 
-    </div>
+<div class="card-header bg-white">
+
+<strong>
+Evolução financeira
+</strong>
+
+
+</div>
+
+
+
+<div class="card-body">
+
+
+<div style="
+height:300px;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#999;
+">
+
+
+Gráfico de vendas por período
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+</div>
 
 
 

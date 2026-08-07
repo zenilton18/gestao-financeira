@@ -3,7 +3,10 @@
 namespace App\Services\Shopee;
 
 use App\Models\ShopeeConnection;
-use Illuminate\Support\Facades\Http;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
+
+
 
 class ShopeeApiService
 {
@@ -24,7 +27,6 @@ class ShopeeApiService
 
         $this->auth = $auth;
 
-
         $this->partnerId = (int) config('shopee.partner_id');
 
         $this->partnerKey = config('shopee.partner_key');
@@ -38,6 +40,7 @@ class ShopeeApiService
         $this->checkToken();
 
     }
+
 
 
     /**
@@ -62,6 +65,7 @@ class ShopeeApiService
 
 
 
+
     /**
      * Faz requisições GET para API Shopee
      */
@@ -70,6 +74,9 @@ class ShopeeApiService
         array $query = []
     ): array {
 
+     Log::info('ENTROU NO GET SHOPEE', [
+        'path' => $path
+    ]);
 
         $this->checkToken();
 
@@ -83,6 +90,7 @@ class ShopeeApiService
             $timestamp .
             $this->connection->access_token .
             $this->connection->shop_id;
+
 
 
         $sign = hash_hmac(
@@ -117,19 +125,54 @@ class ShopeeApiService
 
 
 
-        $response = Http::get(
+        /**
+         * Ambiente local
+         * Desabilita validação SSL
+         */
+        $client = new Client([
+
+            'verify' => false,
+
+            'curl' => [
+
+                CURLOPT_SSL_VERIFYPEER => false,
+
+                CURLOPT_SSL_VERIFYHOST => false,
+
+            ],
+
+            'connect_timeout' => 30,
+
+            'timeout' => 400,
+
+        ]);
+
+
+
+        $response = $client->get(
 
             $this->baseUrl . $path,
 
-            $params
+            [
+
+                'query' => $params,
+
+            ]
 
         );
 
 
 
-        return $response->json();
+        return json_decode(
+
+            $response->getBody()->getContents(),
+
+            true
+
+        );
 
     }
+
 
 
 
@@ -193,23 +236,57 @@ class ShopeeApiService
 
 
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json'
-        ])
-        ->post(
+        $client = new Client([
+
+            'verify' => false,
+
+            'curl' => [
+
+                CURLOPT_SSL_VERIFYPEER => false,
+
+                CURLOPT_SSL_VERIFYHOST => false,
+
+            ],
+
+            'connect_timeout' => 30,
+
+            'timeout' => 180,
+
+        ]);
+
+
+
+
+        $response = $client->post(
 
             $this->baseUrl .
             $path .
             '?' .
             http_build_query($params),
 
-            $body
+            [
+
+                'headers' => [
+
+                    'Content-Type' => 'application/json'
+
+                ],
+
+                'json' => $body
+
+            ]
 
         );
 
 
 
-        return $response->json();
+        return json_decode(
+
+            $response->getBody()->getContents(),
+
+            true
+
+        );
 
     }
 

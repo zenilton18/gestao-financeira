@@ -5,8 +5,14 @@ namespace App\Services\Shopee;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Pedido;
+use App\Models\PedidoItem;
 use App\Models\Product;
+use App\Models\ProductVariation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+
 
 
 class ShopeeOrderService
@@ -29,22 +35,55 @@ class ShopeeOrderService
     {
 
         $orders = $this->getOrderList();
+       
+        $orderSns = [];
+
+        foreach ($orders as $order) {
+
+            $orderSns[] = $order['order_sn'];
+
+        }
+
+        $escrows = [];
+
+        foreach (array_chunk($orderSns, 50) as $chunk) {
+
+            $response = $this->getEscrowDetailBatch($chunk);
+        
+            foreach ($response as $item) {
+
+                if (!isset($item['escrow_detail'])) {
+                    continue;
+                }
 
 
-        foreach($orders as $order)
-        {
+                $detail = $item['escrow_detail'];
+
+
+                $escrows[$detail['order_sn']] = $detail;
+
+            }
+
+        }
+
+        foreach ($orders as $order) {
 
             $detail = $this->getOrderDetail(
                 $order['order_sn']
             );
 
-      
-            if(empty($detail)){
+            if (empty($detail)) {
                 continue;
             }
 
+            $escrow = $escrows[
+                $order['order_sn']
+            ] ?? null;
 
-            $this->saveOrder($detail);
+            $this->salvarPedido(
+                $detail,
+                $escrow
+            );
 
         }
 
@@ -58,55 +97,77 @@ class ShopeeOrderService
     /**
      * Busca lista de pedidos
      */
-    private function getOrderList()
+   private function getOrderList(): array
     {
+        set_time_limit(3000);
 
+        $orders = [];
 
-        $response = $this->api->get(
+        $cursor = '';
 
-            '/api/v2/order/get_order_list',
+        $timeFrom = strtotime('-1 days midnight');
+        $timeTo   = time();
 
-            [
+        do {
 
-                'time_range_field'=>'create_time',
+            $response = $this->api->get(
 
-                'time_from'=>now()
-                    ->subDays(15)
-                    ->timestamp,
+                '/api/v2/order/get_order_list',
 
+                [
 
-                'time_to'=>now()
-                    ->timestamp,
+                    'time_range_field' => 'create_time',
 
+                    'time_from' => strtotime('2026-08-06 00:00:00'),
 
-                'page_size'=>50,
+                    'time_to' => strtotime('2026-08-10 23:59:59'),
 
+                    'page_size' => 100,
 
-                'cursor'=>''
+                    'cursor' => $cursor,
 
-            ]
+                    'response_optional_fields' => 'order_status'
 
-        );
+                ]
 
-
-
-        if(isset($response['error']) 
-            && $response['error']) {
-
-            throw new \Exception(
-                $response['message']
             );
 
-        }
 
+            if (
+                isset($response['error']) &&
+                $response['error']
+            ) {
 
+                throw new \Exception(
+                    $response['message']
+                    ?? 'Erro ao buscar pedidos.'
+                );
 
-        return 
-            $response['response']['order_list']
-            ?? [];
+            }
 
+            foreach (
+                $response['response']['order_list'] ?? []
+                as $order
+            ) {
+
+                $orders[] = $order;
+
+            }
+
+            $cursor =
+                $response['response']['next_cursor']
+                ?? '';
+
+        } while (!empty($cursor));
+
+        return collect($orders)
+
+            ->unique('order_sn')
+
+            ->values()
+
+            ->all();
     }
-
 
 
     /**
@@ -114,33 +175,46 @@ class ShopeeOrderService
      */
     public function syncOrder(string $orderSn)
     {
+        
         $detail = $this->getOrderDetail($orderSn);
 
-
-        if(empty($detail)){
-
+        if (empty($detail)) {
             throw new \Exception(
                 'Pedido não encontrado na Shopee'
             );
-
         }
 
-
-        $this->saveOrder($detail);
-
-
-        return Order::where(
-            'shopee_order_id',
+        /*
+        * Busca os dados financeiros do pedido
+        */
+        $escrowResponse = $this->getEscrowDetailBatch([
             $orderSn
-        )
-        ->first();
+        ]);
 
+        $escrow = null;
+
+        foreach ($escrowResponse as $item) {
+
+            if (
+                isset($item['escrow_detail']) &&
+                ($item['escrow_detail']['order_sn'] ?? null) === $orderSn
+            ) {
+                $escrow = $item['escrow_detail'];
+                break;
+            }
+        }
+
+        return $this->salvarPedido(
+            $detail,
+            $escrow
+        );
     }
 
    
     public function getOrderDetail(string $orderSn)
     {
 
+    
 
         $response = $this->api->get(
 
@@ -151,19 +225,12 @@ class ShopeeOrderService
                 'order_sn_list'=>$orderSn,
 
 
-               'response_optional_fields'=>
-                    'buyer_user_id,
-                    buyer_username,
-                    item_list,
-                    payment_info,
-                    shipping_info,
-                    recipient_address,
-                    package_list'
+               'response_optional_fields' => 
+                    'buyer_user_id,buyer_username,recipient_address,item_list,payment_info,shipping_carrier'
 
             ]
 
         );
-
 
 
         if(isset($response['error']) 
@@ -183,140 +250,400 @@ class ShopeeOrderService
 
     }
 
- 
-    private function saveOrder(array $data)
-    {
-        DB::transaction(function () use ($data) {
-
-            $order = Order::updateOrCreate(
-
-                [
-                    'shopee_order_id' => $data['order_sn']
-                ],
-
-                [
-                    'status' => $data['order_status'] ?? null,
-
-                    'buyer_username' => $data['buyer_username'] ?? null,
-
-                    'order_date' => isset($data['create_time'])
-                        ? date(
-                            'Y-m-d H:i:s',
-                            $data['create_time']
-                        )
-                        : null,
-                    'payment_method' => 
-                        $data['payment_method'] ?? null,
+    private function salvarPedido(array $detail, ?array $escrow = null)
+{
+    $orderSn = $detail['order_sn'];
 
 
-                        'shipping_address' =>
-                        $data['recipient_address'] ?? null,
+    /*
+     * Valor pago pelo cliente
+     */
+    $valorTotal = 0;
 
-                    'raw_data' => $data
-                ]
+    if (isset($detail['payment_info'][0]['payment_amount'])) {
 
+        $valorTotal = $detail['payment_info'][0]['payment_amount'];
+
+    }
+
+
+
+    /*
+     * Calcula valor dos produtos
+     */
+    $valorProdutos = 0;
+
+    foreach ($detail['item_list'] ?? [] as $item) {
+
+        $valorProdutos +=
+
+            (
+                $item['model_discounted_price']
+                ?? 0
+            )
+
+            *
+
+            (
+                $item['model_quantity_purchased']
+                ?? 1
             );
 
-            // Totais do pedido
-            $totalAmount = 0;
-            $productCost = 0;
-            echo('<pre>');
-            print_r($data);
-            echo('</pre>'); die();
+    }
 
-            foreach ($data['item_list'] ?? [] as $item) {
 
-                /*
-                    Procura produto interno
-                    pelo ID Shopee
-                */
-                $product = Product::where(
-                    'shopee_item_id',
-                    $item['item_id']
-                )->first();
 
-            
-                /*
-                    Caso não tenha produto vinculado
-                */
-                $cost = $product?->preco_custo ?? 0;
+    /*
+     * Dados financeiros Shopee
+     */
+    $taxasMarketplace = 0;
 
-                $quantity = $item['model_quantity_purchased'] ?? 1;
+    $valorRepasse = 0;
 
-                $price = $item['model_discounted_price'] ?? 0;
 
-                // Totais do item
-                $itemTotal = $price * $quantity;
-                $itemCost = $cost * $quantity;
-                $itemProfit = $itemTotal - $itemCost;
+    if ($escrow) {
 
-                // Acumula totais do pedido
-                $totalAmount += $itemTotal;
-                $productCost += $itemCost;
+        $income = $escrow['order_income'] ?? [];
 
-                OrderItem::updateOrCreate(
 
-                    [
+        $taxasMarketplace =
 
-                        'order_id' => $order->id,
+            ($income['commission_fee'] ?? 0)
 
-                        'shopee_item_id' => $item['item_id']
+            +
 
-                    ],
+            ($income['service_fee'] ?? 0)
 
-                    [
+            +
 
-                        'product_id' => $product?->id,
+            ($income['seller_transaction_fee'] ?? 0);
 
-                        'product_name' => $item['item_name'],
 
-                        'quantity' => $quantity,
 
-                        'price' => $price,
+        $valorRepasse =
+            $income['escrow_amount']
+            ?? 0;
 
-                        'cost' => $cost,
+    }
 
-                        'profit' => $itemProfit,
 
-                        'raw_data' => $item
 
-                    ]
+    /*
+     * Cria ou atualiza pedido
+     */
+    $pedido = Pedido::updateOrCreate(
 
-                );
+        [
+
+            'pedido_externo' => $orderSn
+
+        ],
+
+        [
+
+            'origem' => 'shopee',
+
+
+            'status_marketplace' =>
+                $detail['order_status']
+                ?? null,
+
+
+            'usuario_cliente' =>
+                $detail['buyer_username']
+                ?? null,
+
+
+            'valor_total' =>
+                $valorTotal,
+
+
+            'valor_produtos' =>
+                $valorProdutos,
+
+
+            'taxas_marketplace' =>
+                $taxasMarketplace,
+
+
+            'valor_repasse' =>
+                $valorRepasse,
+
+
+            'custo_total' =>
+                0,
+
+
+            'lucro_bruto' =>
+                0,
+
+
+            'transportadora' =>
+                $detail['shipping_carrier']
+                ?? null,
+
+
+            'endereco_entrega' =>
+                $detail['recipient_address']
+                ?? null,
+
+
+            'data_pedido' =>
+
+                isset($detail['create_time'])
+
+                    ?
+
+                    date(
+                        'Y-m-d H:i:s',
+                        $detail['create_time']
+                    )
+
+                    :
+
+                    null,
+
+
+            'dados_marketplace' =>
+                $detail
+
+        ]
+
+    );
+
+ Log::info('Processando pedido Shopee via Push', [
+        'order_sn' => $detail,
+    ]);
+
+    /*
+     * Recria itens
+     */
+    $pedido->itens()->delete();
+
+
+    $custoTotal = 0;
+
+
+    foreach ($detail['item_list'] ?? [] as $item) {
+
+
+        $produto = null;
+
+        $variacao = null;
+
+
+
+        /*
+         * Busca variação Shopee
+         */
+        if (!empty($item['model_id'])) {
+
+            $variacao = ProductVariation::where(
+                'shopee_model_id',
+                $item['model_id']
+            )->first();
+
+
+            if ($variacao) {
+
+                $produto = $variacao->produto;
 
             }
 
-            // Calcula totais do pedido
-            $profit = $totalAmount - $productCost;
+        }
 
-            $margin = $totalAmount > 0
-                ? round(($profit / $totalAmount) * 100, 2)
-                : 0;
 
-                
 
-            // Atualiza os valores financeiros do pedido
-            $order->update([
+        /*
+         * Busca produto principal
+         */
+        if (!$produto) {
 
-                'total_amount' => $totalAmount,
+            $produto = Product::where(
+                'shopee_item_id',
+                $item['item_id'] ?? 0
+            )->first();
 
-                'product_cost' => $productCost,
+        }
 
-                'profit' => $profit,
 
-                'margin_percent' => $margin,
 
-                // Por enquanto ficam zerados.
-                // Posteriormente serão preenchidos com os valores retornados pela Shopee.
-                'shopee_commission' => 0,
+        /*
+         * Calcula custo
+         */
+        $custoUnitario = 0;
 
-                'shopee_fee' => 0,
 
-            ]);
+        if ($variacao) {
 
-        });
+            $custoUnitario =
+                $variacao->custo ?? 0;
+
+        } elseif ($produto) {
+
+            $custoUnitario =
+                $produto->preco_custo ?? 0;
+
+        }
+
+
+
+        $quantidade =
+            $item['model_quantity_purchased']
+            ?? 1;
+
+
+
+        $custoItem =
+            $custoUnitario * $quantidade;
+
+
+
+        $custoTotal += $custoItem;
+
+
+
+        $valorItem =
+
+            (
+                $item['model_discounted_price']
+                ?? 0
+            )
+
+            *
+
+            $quantidade;
+
+
+
+        PedidoItem::create([
+
+
+            'pedido_id' =>
+                $pedido->id,
+
+
+            'produto_id' =>
+                $produto?->id,
+
+
+            'product_variation_id' =>
+                $variacao?->id,
+
+
+
+            'marketplace_item_id' =>
+                $item['item_id']
+                ?? null,
+
+
+            'marketplace_model_id' =>
+                $item['model_id']
+                ?? null,
+
+
+
+            'nome_produto' =>
+                $item['item_name']
+                ?? '',
+
+
+
+            'sku_marketplace' =>
+                $item['model_sku']
+                ?? null,
+
+
+
+            'variacao' =>
+                $item['model_name']
+                ?? null,
+
+
+
+            'quantidade' =>
+                $quantidade,
+
+
+
+            'preco_unitario' =>
+                $item['model_discounted_price']
+                ?? 0,
+
+
+
+            'valor_total' =>
+                $valorItem,
+
+
+
+            'custo' =>
+                $custoItem,
+
+
+
+            'lucro' =>
+                $valorItem - $custoItem,
+
+
+
+            'dados_marketplace' =>
+                $item
+
+        ]);
+
     }
 
+
+
+    /*
+     * Atualiza financeiro final
+     */
+    $pedido->update([
+
+        'custo_total' =>
+            $custoTotal,
+
+
+        'lucro_bruto' =>
+            $valorRepasse - $custoTotal,
+
+    ]);
+
+
+
+    return $pedido;
+}
+
+private function getEscrowDetailBatch(array $orderSns): array
+{
+
+    $response = $this->api->post(
+
+        '/api/v2/payment/get_escrow_detail_batch',
+
+        [
+            'order_sn_list' => array_values($orderSns)
+        ]
+
+    );
+
+
+    if (
+        isset($response['error']) &&
+        $response['error']
+    ) {
+
+        throw new \Exception(
+            $response['message']
+        );
+
+    }
+
+
+    return $response['response'] ?? [];
+
+}
 
 
 }

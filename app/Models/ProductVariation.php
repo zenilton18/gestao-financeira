@@ -18,7 +18,8 @@ class ProductVariation extends Model
 
         'preco',
 
-        'estoque'
+        'estoque',
+        'custo'
     ];
 
     protected $casts = [

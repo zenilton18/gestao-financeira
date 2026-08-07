@@ -312,95 +312,73 @@
 
 @if($produto->variacoes->count())
 
-
 <div class="card mb-4">
 
+    <div class="card-header">
+        Variações
+    </div>
 
-<div class="card-header">
-    Variações
-</div>
+    <div class="card-body">
 
+        <table class="table table-bordered align-middle">
 
-<div class="card-body">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>SKU</th>
+                    <th>Preço Venda</th>
+                    <th style="width: 150px;">Preço Custo</th>
+                    <th>Estoque</th>
+                </tr>
+            </thead>
 
+            <tbody>
 
-<table class="table table-bordered">
+                @foreach($produto->variacoes as $variacao)
 
+                    {{-- Passamos o ID da variação no name do input para identificarmos no Request --}}
+                    <input type="hidden" name="variacoes[{{ $loop->index }}][id]" value="{{ $variacao->id }}">
 
-<thead>
+                    <tr>
+                        <td>
+                            {{ $variacao->nome }}
+                        </td>
 
-<tr>
+                        <td>
+                            {{ $variacao->sku }}
+                        </td>
 
-<th>
-Nome
-</th>
+                        <td>
+                            R$ {{ number_format($variacao->preco, 2, ',', '.') }}
+                        </td>
 
-<th>
-SKU
-</th>
+                        <td>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                name="variacoes[{{ $loop->index }}][custo]" 
+                                class="form-control form-control-sm" 
+                                value="{{ old('variacoes.' . $loop->index . '.custo', $variacao->custo) }}"
+                            >
+                        </td>
 
-<th>
-Preço
-</th>
+                        <td>
+                            {{ $variacao->estoque }}
+                        </td>
 
-<th>
-Estoque
-</th>
+                    </tr>
 
-</tr>
+                @endforeach
 
-</thead>
+            </tbody>
 
+        </table>
 
-<tbody>
-
-
-@foreach($produto->variacoes as $variacao)
-
-
-<tr>
-
-
-<td>
-{{ $variacao->nome }}
-</td>
-
-
-<td>
-{{ $variacao->sku }}
-</td>
-
-
-<td>
-R$ {{ number_format($variacao->preco,2,',','.') }}
-</td>
-
-
-<td>
-{{ $variacao->estoque }}
-</td>
-
-
-</tr>
-
-
-@endforeach
-
-
-</tbody>
-
-
-</table>
-
+    </div>
 
 </div>
-
-
-</div>
-
 
 @endif
-
 
 
 

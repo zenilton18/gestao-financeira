@@ -158,6 +158,9 @@ class ShopeeProductController extends Controller
      */
     private function salvarProduto(array $produto)
     {
+        echo('<pre>');
+        print_r($produto);
+        echo('</pre>'); die();
         $connection = ShopeeConnection::first();
 
         $product = Product::updateOrCreate(
@@ -198,6 +201,9 @@ class ShopeeProductController extends Controller
         );
 
         $product->variacoes()->delete();
+        echo('<pre>');
+        print_r($produto);
+        echo('</pre>'); die();
 
         foreach ($produto['variacoes'] as $variacao) {
 
@@ -212,6 +218,7 @@ class ShopeeProductController extends Controller
                 'sku' => $variacao['sku'],
 
                 'preco' => $variacao['preco'],
+                'custo' => $variacao['custo'],
 
                 'estoque' => $variacao['estoque'],
             ]);
@@ -243,6 +250,7 @@ class ShopeeProductController extends Controller
     }
     public function editar($id)
     {
+     
         $produto = Product::with('variacoes')
             ->findOrFail($id);
 
@@ -255,28 +263,34 @@ class ShopeeProductController extends Controller
     {
         $produto = Product::findOrFail($id);
 
-
+        // 1. Atualiza os dados principais do produto
         $produto->update([
-
             'preco_custo' => $request->preco_custo,
-
             'preco_venda' => $request->preco_venda,
-
             'codigo_interno' => $request->codigo_interno,
-
             'codigo_barras' => $request->codigo_barras,
-
             'estoque_minimo' => $request->estoque_minimo,
-
             'localizacao' => $request->localizacao,
-
             'observacoes' => $request->observacoes,
-
         ]);
 
+        // 2. Atualiza o custo de cada variação enviada no formulário
+        if ($request->has('variacoes')) {
+            foreach ($request->input('variacoes') as $dadosVariacao) {
+                $variacao = \App\Models\ProductVariation::where('id', $dadosVariacao['id'])
+                    ->where('product_id', $produto->id)
+                    ->first();
+
+                if ($variacao) {
+                    $variacao->update([
+                        'custo' => $dadosVariacao['custo'] ?? 0
+                    ]);
+                }
+            }
+        }
 
         return redirect()
-            ->route('shopee.produtos.editar',$produto->id)
-            ->with('success','Produto atualizado com sucesso');
+            ->route('shopee.produtos.editar', $produto->id)
+            ->with('success', 'Produto atualizado com sucesso');
     }
 }
