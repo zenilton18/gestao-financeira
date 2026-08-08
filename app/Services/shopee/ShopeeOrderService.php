@@ -176,6 +176,7 @@ class ShopeeOrderService
     public function syncOrder(string $orderSn)
     {
         
+
         $detail = $this->getOrderDetail($orderSn);
 
         if (empty($detail)) {

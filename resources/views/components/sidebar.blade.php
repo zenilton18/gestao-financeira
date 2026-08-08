@@ -350,7 +350,6 @@
 
         <div class="user-avatar">
 
-            {{ strtoupper(substr(Auth::user()->name,0,1)) }}
 
         </div>
 
@@ -359,9 +358,6 @@
         <div>
 
 
-            <strong>
-                {{ Auth::user()->name }}
-            </strong>
 
 
             <small class="d-block text-muted">

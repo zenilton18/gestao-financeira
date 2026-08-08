@@ -226,7 +226,7 @@
                                         @endif
                                     </td>
                                     <td class="text-end pe-3 fw-bold {{ $lancamento->tipo == 'receber' ? 'text-success' : 'text-danger' }}">
-                                        {{ $lancamento->tipo == 'receber' ? '+' : '-' }} R$ {{ number_format($lancamento->valor_total, 2, ',', '.') }}
+                                        {{ $lancamento->tipo == 'receber' ? '+' : '-' }} R$ {{ number_format($lancamento->valor, 2, ',', '.') }}
                                     </td>
                                 </tr>
                             @endforeach
