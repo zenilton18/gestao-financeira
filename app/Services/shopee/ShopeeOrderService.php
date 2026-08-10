@@ -175,7 +175,7 @@ class ShopeeOrderService
      */
     public function syncOrder(string $orderSn)
     {
-        
+          Log::info('chegeui');
 
         $detail = $this->getOrderDetail($orderSn);
 

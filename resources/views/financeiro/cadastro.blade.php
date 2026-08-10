@@ -10,9 +10,6 @@
         <h4 class="fw-bold mb-0 text-dark">
             <i class="bi bi-plus-circle me-1"></i> Novo Lançamento
         </h4>
-        {{-- <a href="{{ route('financeiro.cadastro') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a> --}}
     </div>
 
     @if(session('sucesso'))
@@ -38,7 +35,7 @@
             <form action="{{ route('contas.store') }}" method="POST" id="formLancamento">
                 @csrf
 
-                {{-- 1. Tipo de Lançamento (Botões Grandes estilo Toggle para Celular) --}}
+                {{-- 1. Tipo de Lançamento --}}
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-muted text-uppercase">Tipo de Operação</label>
                     <div class="row g-2">
@@ -59,7 +56,7 @@
                     </div>
                 </div>
 
-                {{-- 2. Centro de Custo / Origem (Exibido apenas quando for Entrada) --}}
+                {{-- 2. Centro de Custo / Origem --}}
                 <div class="mb-3" id="campo_centro_custo">
                     <label for="centro_custo" class="form-label fw-bold small text-muted text-uppercase">
                         Origem da Entrada
@@ -72,10 +69,31 @@
                     </select>
                 </div>
 
+                {{-- 2.1. Seleção de Produto e Quantidade (Exibido apenas em Venda de Produtos) --}}
+                <div class="row g-2 mb-3" id="campo_produto" style="display: none;">
+                    <div class="col-8 col-md-9">
+                        <label for="produto_selecionado" class="form-label fw-bold small text-primary text-uppercase">
+                            <i class="bi bi-box-seam me-1"></i> Produto
+                        </label>
+                        <select name="produto_id" id="produto_selecionado" class="form-select form-select-lg border-primary">
+                            <option value="" disabled selected>Escolha o produto...</option>
+                            <option value="pomada_modeladora" data-nome="Pomada Modeladora" data-valor="35.00">Pomada Modeladora - R$ 35,00</option>
+                            <option value="oleo_barba" data-nome="Óleo para Barba" data-valor="40.00">Óleo para Barba - R$ 40,00</option>
+                            <option value="shampoo_barba" data-nome="Shampoo Especial Barba" data-valor="45.00">Shampoo Especial para Barba - R$ 45,00</option>
+                            <option value="minoxidil" data-nome="Tônico Minoxidil" data-valor="80.00">Tônico / Minoxidil - R$ 80,00</option>
+                            <option value="cera_capilar" data-nome="Cera Capilar" data-valor="30.00">Cera Capilar - R$ 30,00</option>
+                        </select>
+                    </div>
+                    <div class="col-4 col-md-3">
+                        <label for="quantidade_produto" class="form-label fw-bold small text-primary text-uppercase">Qtd</label>
+                        <input type="number" name="quantidade" id="quantidade_produto" class="form-control form-control-lg border-primary text-center" value="1" min="1" step="1">
+                    </div>
+                </div>
+
                 {{-- 3. Descrição --}}
                 <div class="mb-3">
                     <label for="descricao" class="form-label fw-bold small text-muted text-uppercase">Descrição / Cliente</label>
-                    <input type="text" name="descricao" id="descricao" class="form-control form-control-lg" placeholder="Ex: Pagamento material de limpeza" value="{{ old('descricao') }}" >
+                    <input type="text" name="descricao" id="descricao" class="form-control form-control-lg" placeholder="Ex: Pagamento material de limpeza" value="{{ old('descricao') }}">
                 </div>
 
                 {{-- 4. Valor Total e Data de Vencimento --}}
@@ -92,35 +110,22 @@
                         <label for="data_vencimento" class="form-label fw-bold small text-muted text-uppercase">Data de Vencimento</label>
                         <input type="date" name="data_vencimento" id="data_vencimento" class="form-control form-control-lg" value="{{ old('data_vencimento', date('Y-m-d')) }}" required>
                     </div>
-                    <div class="row g-2 mb-3">
-    <div class="col-6">
-        <label for="status" class="form-label fw-bold small text-muted text-uppercase">Status Inicial</label>
-        <select name="status" id="status" class="form-select form-select-lg">
-            <option value="pago" {{ old('status', 'pago') == 'pago' ? 'selected' : '' }}>✅ Pago / Recebido</option>
-            <option value="pendente" {{ old('status') == 'pendente' ? 'selected' : '' }}>⏳ Pendente (A vencer)</option>
-        </select>
-    </div>
+                </div>
 
-    <div class="col-6" id="campo_data_pagamento">
-        <label for="data_pagamento" class="form-label fw-bold small text-muted text-uppercase">Data do Pagamento</label>
-        <input type="date" name="data_pagamento" id="data_pagamento" class="form-control form-control-lg" value="{{ old('data_pagamento', date('Y-m-d')) }}">
-    </div>
-</div>
+                {{-- Status e Data de Pagamento --}}
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label for="status" class="form-label fw-bold small text-muted text-uppercase">Status Inicial</label>
+                        <select name="status" id="status" class="form-select form-select-lg">
+                            <option value="pago" {{ old('status', 'pago') == 'pago' ? 'selected' : '' }}>✅ Pago / Recebido</option>
+                            <option value="pendente" {{ old('status') == 'pendente' ? 'selected' : '' }}>⏳ Pendente (A vencer)</option>
+                        </select>
+                    </div>
 
-<script>
-    // Esconde/mostra a data de pagamento se o status for pendente
-    const selectStatus = document.getElementById('status');
-    const campoDataPagamento = document.getElementById('campo_data_pagamento');
-
-    selectStatus.addEventListener('change', function() {
-        if (this.value === 'pago') {
-            campoDataPagamento.style.display = 'block';
-        } else {
-            campoDataPagamento.style.display = 'none';
-        }
-    });
-</script>
-
+                    <div class="col-6" id="campo_data_pagamento">
+                        <label for="data_pagamento" class="form-label fw-bold small text-muted text-uppercase">Data do Pagamento</label>
+                        <input type="date" name="data_pagamento" id="data_pagamento" class="form-control form-control-lg" value="{{ old('data_pagamento', date('Y-m-d')) }}">
+                    </div>
                 </div>
 
                 {{-- 5. Parcelamento / Repetição --}}
@@ -148,7 +153,7 @@
                     </div>
                 </div>
 
-                {{-- Botão de Salvar Grande (Fácil de Clicar no Celular) --}}
+                {{-- Botão de Salvar --}}
                 <button type="submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold text-uppercase shadow">
                     <i class="bi bi-check-lg me-1"></i> Salvar Lançamento
                 </button>
@@ -159,26 +164,73 @@
     </div>
 </div>
 
-{{-- Script para ocultar/exibir o Centro de Custo e formatar inputs --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const radioReceber = document.getElementById('tipo_receber');
         const radioPagar = document.getElementById('tipo_pagar');
         const campoCentroCusto = document.getElementById('campo_centro_custo');
+        const selectCentroCusto = document.getElementById('centro_custo');
+        
+        const campoProduto = document.getElementById('campo_produto');
+        const selectProduto = document.getElementById('produto_selecionado');
+        const inputQuantidade = document.getElementById('quantidade_produto');
+        const inputDescricao = document.getElementById('descricao');
+        const inputValor = document.getElementById('valor_total');
+        
+        const selectStatus = document.getElementById('status');
+        const campoDataPagamento = document.getElementById('campo_data_pagamento');
 
-        function alternarCentroCusto() {
+        // Alterna a exibição do Centro de Custo e dos Produtos
+        function atualizarVisibilidade() {
             if (radioReceber.checked) {
                 campoCentroCusto.style.display = 'block';
+                verificarProduto();
             } else {
                 campoCentroCusto.style.display = 'none';
+                campoProduto.style.display = 'none';
             }
         }
 
-        radioReceber.addEventListener('change', alternarCentroCusto);
-        radioPagar.addEventListener('change', alternarCentroCusto);
+        function verificarProduto() {
+            if (radioReceber.checked && selectCentroCusto.value === 'venda_produtos') {
+                campoProduto.style.display = 'flex';
+            } else {
+                campoProduto.style.display = 'none';
+            }
+        }
 
-        // Executa ao carregar a página
-        alternarCentroCusto();
+        // Calcula o valor total e atualiza a descrição com base no produto e quantidade
+        function calcularTotalProduto() {
+            if (selectProduto.selectedIndex <= 0) return;
+
+            const opcaoSelecionada = selectProduto.options[selectProduto.selectedIndex];
+            const nomeProduto = opcaoSelecionada.getAttribute('data-nome');
+            const precoUnitario = parseFloat(opcaoSelecionada.getAttribute('data-valor')) || 0;
+            const qtd = parseInt(inputQuantidade.value) || 1;
+
+            const total = (precoUnitario * qtd).toFixed(2);
+
+            // Atualiza os inputs
+            inputValor.value = total;
+            inputDescricao.value = `Venda: ${qtd}x ${nomeProduto}`;
+        }
+
+        // Eventos para recálculo automático
+        selectProduto.addEventListener('change', calcularTotalProduto);
+        inputQuantidade.addEventListener('input', calcularTotalProduto);
+
+        // Alterna exibição do campo de data de pagamento
+        selectStatus.addEventListener('change', function() {
+            campoDataPagamento.style.display = (this.value === 'pago') ? 'block' : 'none';
+        });
+
+        radioReceber.addEventListener('change', atualizarVisibilidade);
+        radioPagar.addEventListener('change', atualizarVisibilidade);
+        selectCentroCusto.addEventListener('change', verificarProduto);
+
+        // Estado inicial da tela
+        atualizarVisibilidade();
+        campoDataPagamento.style.display = (selectStatus.value === 'pago') ? 'block' : 'none';
     });
 </script>
 @endsection

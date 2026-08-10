@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Conta; // Certifique-se de que seu Model se chama Conta
+use App\Models\Conta;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -14,14 +14,16 @@ class DashboardController extends Controller
         $anoAtual = Carbon::now()->year;
         $hoje = Carbon::today()->toDateString();
 
-        // 1. Métricas do Mês
-        $totalRecebidoMensal = Conta::where('tipo', 'receber')
+        // 1. Métricas do Mês (Apenas Operacional Financeiro - Exclui Venda de Produtos)
+        $totalRecebidoMensal = Conta::apenasFinanceiro()
+            ->where('tipo', 'receber')
             ->where('status', 'pago')
             ->whereMonth('data_vencimento', $mesAtual)
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
-        $totalPagoMensal = Conta::where('tipo', 'pagar')
+        $totalPagoMensal = Conta::apenasFinanceiro()
+            ->where('tipo', 'pagar')
             ->where('status', 'pago')
             ->whereMonth('data_vencimento', $mesAtual)
             ->whereYear('data_vencimento', $anoAtual)
@@ -29,31 +31,58 @@ class DashboardController extends Controller
 
         $saldoAtual = $totalRecebidoMensal - $totalPagoMensal;
 
-        $totalPendenteMensal = Conta::where('status', 'pendente')
+        $totalPendenteMensal = Conta::apenasFinanceiro()
+            ->where('status', 'pendente')
             ->whereMonth('data_vencimento', $mesAtual)
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
-        // 2. Movimentações do Dia
-        $entradasHoje = Conta::where('tipo', 'receber')
+        // 2. Movimentações do Dia (Exclui Venda de Produtos)
+        $entradasHoje = Conta::apenasFinanceiro()
+            ->where('tipo', 'receber')
             ->where('status', 'pago')
             ->whereDate('data_vencimento', $hoje)
             ->sum('valor');
 
-        $saidasHoje = Conta::where('tipo', 'pagar')
+        $saidasHoje = Conta::apenasFinanceiro()
+            ->where('tipo', 'pagar')
             ->where('status', 'pago')
             ->whereDate('data_vencimento', $hoje)
             ->sum('valor');
 
-        // 3. Origem de Entradas
+        // 3. Origem de Entradas Financeiras (Serviços e Combos)
         $faturamentoOrigem = [
-            'corte_barba'    => Conta::where('tipo', 'receber')->where('centro_custo', 'corte_barba')->where('status', 'pago')->sum('valor'),
-            'venda_produtos' => Conta::where('tipo', 'receber')->where('centro_custo', 'venda_produtos')->where('status', 'pago')->sum('valor'),
-            'combos_pacotes' => Conta::where('tipo', 'receber')->where('centro_custo', 'combos_pacotes')->where('status', 'pago')->sum('valor'),
-            'outros'         => Conta::where('tipo', 'receber')->where('centro_custo', 'outros')->where('status', 'pago')->sum('valor'),
+            'corte_barba'    => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'corte_barba')->where('status', 'pago')->sum('valor'),
+            'combos_pacotes' => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'combos_pacotes')->where('status', 'pago')->sum('valor'),
+            'outros'         => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'outros')->where('status', 'pago')->sum('valor'),
         ];
 
-        // 4. Lista dos Últimos Lançamentos
+        // 4. Métricas Isoladas de Produtos e Estoque
+        $produtosMetricas = [
+            'faturamento_mensal' => Conta::apenasVendasProdutos()
+                ->where('status', 'pago')
+                ->whereMonth('data_vencimento', $mesAtual)
+                ->whereYear('data_vencimento', $anoAtual)
+                ->sum('valor'),
+
+            'itens_vendidos_mes' => Conta::apenasVendasProdutos()
+                ->where('status', 'pago')
+                ->whereMonth('data_vencimento', $mesAtual)
+                ->whereYear('data_vencimento', $anoAtual)
+                ->sum('quantidade'),
+
+            'faturamento_hoje' => Conta::apenasVendasProdutos()
+                ->where('status', 'pago')
+                ->whereDate('data_vencimento', $hoje)
+                ->sum('valor'),
+
+            'itens_vendidos_hoje' => Conta::apenasVendasProdutos()
+                ->where('status', 'pago')
+                ->whereDate('data_vencimento', $hoje)
+                ->sum('quantidade'),
+        ];
+
+        // 5. Lista dos Últimos Lançamentos (Inclui todos os registros para histórico visual)
         $ultimosLancamentos = Conta::orderBy('created_at', 'desc')->take(5)->get();
 
         return view('dashboard', compact(
@@ -64,6 +93,7 @@ class DashboardController extends Controller
             'entradasHoje',
             'saidasHoje',
             'faturamentoOrigem',
+            'produtosMetricas',
             'ultimosLancamentos'
         ));
     }
