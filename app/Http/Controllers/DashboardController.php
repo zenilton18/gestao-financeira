@@ -8,13 +8,20 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $mesAtual = Carbon::now()->month;
         $anoAtual = Carbon::now()->year;
         $hoje = Carbon::today()->toDateString();
 
-        // 1. Métricas do Mês (Apenas Operacional Financeiro - Exclui Venda de Produtos)
+        // Filtro selecionado pelo usuário
+        $filtro = $request->get('filtro');
+
+        // =========================================================
+        // 1. MÉTRICAS DO MÊS
+        // =========================================================
+
+        // Total recebido no mês
         $totalRecebidoMensal = Conta::apenasFinanceiro()
             ->where('tipo', 'receber')
             ->where('status', 'pago')
@@ -22,6 +29,7 @@ class DashboardController extends Controller
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
+        // Total pago no mês
         $totalPagoMensal = Conta::apenasFinanceiro()
             ->where('tipo', 'pagar')
             ->where('status', 'pago')
@@ -29,15 +37,22 @@ class DashboardController extends Controller
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
+        // Saldo atual
         $saldoAtual = $totalRecebidoMensal - $totalPagoMensal;
 
+        // Total pendente no mês
         $totalPendenteMensal = Conta::apenasFinanceiro()
             ->where('status', 'pendente')
             ->whereMonth('data_vencimento', $mesAtual)
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
-        // 2. Movimentações do Dia (Exclui Venda de Produtos)
+
+
+        // =========================================================
+        // 2. MOVIMENTAÇÕES DO DIA
+        // =========================================================
+
         $entradasHoje = Conta::apenasFinanceiro()
             ->where('tipo', 'receber')
             ->where('status', 'pago')
@@ -50,14 +65,34 @@ class DashboardController extends Controller
             ->whereDate('data_vencimento', $hoje)
             ->sum('valor');
 
-        // 3. Origem de Entradas Financeiras (Serviços e Combos)
+        // =========================================================
+        // 3. ORIGEM DE ENTRADAS FINANCEIRAS
+        // =========================================================
+
         $faturamentoOrigem = [
-            'corte_barba'    => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'corte_barba')->where('status', 'pago')->sum('valor'),
-            'combos_pacotes' => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'combos_pacotes')->where('status', 'pago')->sum('valor'),
-            'outros'         => Conta::apenasFinanceiro()->where('tipo', 'receber')->where('centro_custo', 'outros')->where('status', 'pago')->sum('valor'),
+            'corte_barba' => Conta::apenasFinanceiro()
+                ->where('tipo', 'receber')
+                ->where('centro_custo', 'corte_barba')
+                ->where('status', 'pago')
+                ->sum('valor'),
+
+            'combos_pacotes' => Conta::apenasFinanceiro()
+                ->where('tipo', 'receber')
+                ->where('centro_custo', 'combos_pacotes')
+                ->where('status', 'pago')
+                ->sum('valor'),
+
+            'outros' => Conta::apenasFinanceiro()
+                ->where('tipo', 'receber')
+                ->where('centro_custo', 'outros')
+                ->where('status', 'pago')
+                ->sum('valor'),
         ];
 
-        // 4. Métricas Isoladas de Produtos e Estoque
+        // =========================================================
+        // 4. MÉTRICAS DE PRODUTOS
+        // =========================================================
+
         $produtosMetricas = [
             'faturamento_mensal' => Conta::apenasVendasProdutos()
                 ->where('status', 'pago')
@@ -82,8 +117,101 @@ class DashboardController extends Controller
                 ->sum('quantidade'),
         ];
 
-        // 5. Lista dos Últimos Lançamentos (Inclui todos os registros para histórico visual)
-        $ultimosLancamentos = Conta::orderBy('created_at', 'desc')->take(5)->get();
+        // =========================================================
+        // 5. LISTAGEM DINÂMICA DOS LANÇAMENTOS
+        // =========================================================
+
+        $queryLancamentos = Conta::query();
+      
+
+        switch ($filtro) {
+
+            // -----------------------------------------------------
+            // RECEBIDO NO MÊS
+            // -----------------------------------------------------
+            case 'recebido':
+                $queryLancamentos
+                    ->apenasFinanceiro()
+                    ->where('tipo', 'receber')
+                    ->where('status', 'pago')
+                    ->whereMonth('data_vencimento', $mesAtual)
+                    ->whereYear('data_vencimento', $anoAtual);
+
+                break;
+
+            // -----------------------------------------------------
+            // PAGO NO MÊS
+            // -----------------------------------------------------
+            case 'pago':
+                $queryLancamentos
+                    ->apenasFinanceiro()
+                    ->where('tipo', 'pagar')
+                    ->where('status', 'pago')
+                    ->whereMonth('data_vencimento', $mesAtual)
+                    ->whereYear('data_vencimento', $anoAtual);
+
+                break;
+
+            // -----------------------------------------------------
+            // PENDENTE NO MÊS
+            // -----------------------------------------------------
+            case 'pendente':
+                $queryLancamentos
+                    ->apenasFinanceiro()
+                    ->where('status', 'pendente')
+                    ->whereMonth('data_vencimento', $mesAtual)
+                    ->whereYear('data_vencimento', $anoAtual);
+
+                break;
+
+            // -----------------------------------------------------
+            // FATURAMENTO DE PRODUTOS DO MÊS
+            // -----------------------------------------------------
+            case 'produtos_mes':
+                $queryLancamentos
+                    ->apenasVendasProdutos()
+                    ->where('status', 'pago')
+                    ->whereMonth('data_vencimento', $mesAtual)
+                    ->whereYear('data_vencimento', $anoAtual);
+
+                break;
+
+            // -----------------------------------------------------
+            // VENDAS DE PRODUTOS DE HOJE
+            // -----------------------------------------------------
+            case 'produtos_hoje':
+                $queryLancamentos
+                    ->apenasVendasProdutos()
+                    ->where('status', 'pago')
+                    ->whereDate('data_vencimento', $hoje);
+
+                break;
+
+            // -----------------------------------------------------
+            // SEM FILTRO
+            // -----------------------------------------------------
+            default:
+                $queryLancamentos = Conta::query();
+                break;
+        }
+
+        // Se houver filtro, mostra até 50 registros.
+        // Sem filtro, mantém o comportamento anterior de mostrar 5.
+        if ($filtro) {
+            $ultimosLancamentos = $queryLancamentos
+                ->orderBy('data_vencimento', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->take(50)
+                ->get();
+        } else {
+            $ultimosLancamentos = Conta::orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+        }
+
+        //   echo('<pre>');
+        // print_r(dd($queryLancamentos->toRawSql()));
+        // echo('</pre>'); die();
 
         return view('dashboard', compact(
             'saldoAtual',
@@ -94,7 +222,8 @@ class DashboardController extends Controller
             'saidasHoje',
             'faturamentoOrigem',
             'produtosMetricas',
-            'ultimosLancamentos'
+            'ultimosLancamentos',
+            'filtro'
         ));
     }
 }

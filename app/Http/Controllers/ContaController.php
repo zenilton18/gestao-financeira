@@ -66,6 +66,8 @@ class ContaController extends Controller
 
                 $valorParcela = ($i === 1) ? ($valorBase + $resto) : $valorBase;
 
+                // dd($dadosValidados);
+
                 Conta::create([
                     'tipo'            => $dadosValidados['tipo'],
                     'centro_custo'    => $dadosValidados['tipo'] === 'receber' ? $dadosValidados['centro_custo'] : null,
