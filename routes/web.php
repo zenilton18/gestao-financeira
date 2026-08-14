@@ -11,25 +11,16 @@ use App\Http\Controllers\ShopeeOrderController;
 use App\Services\ShopeeService;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ContaController;
- use App\Http\Controllers\ShopeeWebhookController;
+use App\Http\Controllers\ShopeeWebhookController;
 
- Route::get('/teste-http-shopee', function () {
 
-    return \Illuminate\Support\Facades\Http::withoutVerifying()
-        ->get('https://partner.shopeemobile.com')
-        ->body();
-
-});
 
 
 Route::post('/contas', [ContaController::class, 'store'])->name('contas.store');
 Route::get('/contas', [ContaController::class, 'create'])->name('contas.create');
 Route::patch('/contas/{id}/dar-baixa', [ContaController::class, 'darBaixa'])->name('contas.darBaixa');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-Route::post('/shopee/webhook', [
-    ShopeeWebhookController::class,
-    'handle'
-]);
+
 
 Route::middleware('auth')->group(function () {
 

@@ -175,34 +175,31 @@ class ShopeeOrderService
      */
     public function syncOrder(string $orderSn)
     {
-          Log::info('chegeui');
+       
+        Log::info('[ShopeeOrderService] Buscando detalhes do pedido', ['order_sn' => $orderSn]);
 
         $detail = $this->getOrderDetail($orderSn);
 
         if (empty($detail)) {
-            throw new \Exception(
-                'Pedido não encontrado na Shopee'
-            );
+            Log::error('[ShopeeOrderService] Pedido não encontrado na API Shopee', ['order_sn' => $orderSn]);
+            throw new \Exception("Pedido {$orderSn} não encontrado na Shopee");
         }
 
-        /*
-        * Busca os dados financeiros do pedido
-        */
-        $escrowResponse = $this->getEscrowDetailBatch([
-            $orderSn
-        ]);
-
+       
         $escrow = null;
-
-        foreach ($escrowResponse as $item) {
-
-            if (
-                isset($item['escrow_detail']) &&
-                ($item['escrow_detail']['order_sn'] ?? null) === $orderSn
-            ) {
-                $escrow = $item['escrow_detail'];
-                break;
+        try {
+            $escrowResponse = $this->getEscrowDetailBatch([$orderSn]);
+            foreach ($escrowResponse as $item) {
+                if (isset($item['escrow_detail']) && ($item['escrow_detail']['order_sn'] ?? null) === $orderSn) {
+                    $escrow = $item['escrow_detail'];
+                    break;
+                }
             }
+        } catch (\Throwable $e) {
+            Log::warning('[ShopeeOrderService] Não foi possível obter dados de Escrow (financeiro)', [
+                'order_sn' => $orderSn,
+                'erro' => $e->getMessage()
+            ]);
         }
 
         return $this->salvarPedido(
@@ -232,18 +229,13 @@ class ShopeeOrderService
             ]
 
         );
-
-
-        if(isset($response['error']) 
-            && $response['error']) {
-
-            throw new \Exception(
-                $response['message']
-            );
-
+        if (isset($response['error']) && $response['error']) {
+            Log::error('[ShopeeOrderService] Erro na API get_order_detail', [
+                'order_sn' => $orderSn,
+                'response' => $response
+            ]);
+            throw new \Exception($response['message'] ?? 'Erro ao buscar detalhe do pedido na Shopee');
         }
-
-
 
         return
             $response['response']['order_list'][0]
@@ -253,7 +245,9 @@ class ShopeeOrderService
 
     private function salvarPedido(array $detail, ?array $escrow = null)
 {
+    
     $orderSn = $detail['order_sn'];
+ Log::info('[ShopeeOrderService] Iniciando gravação do pedido no banco', ['order_sn' => $orderSn]);
 
 
     /*
@@ -332,288 +326,100 @@ class ShopeeOrderService
     /*
      * Cria ou atualiza pedido
      */
-    $pedido = Pedido::updateOrCreate(
+    try {
+            /*
+             * Cria ou atualiza pedido
+             */
+            $pedido = Pedido::updateOrCreate(
+                ['pedido_externo' => $orderSn],
+                [
+                    'origem' => 'shopee',
+                    'status_marketplace' => $detail['order_status'] ?? null,
+                    'usuario_cliente' => $detail['buyer_username'] ?? null,
+                    'valor_total' => $valorTotal,
+                    'valor_produtos' => $valorProdutos,
+                    'taxas_marketplace' => $taxasMarketplace,
+                    'valor_repasse' => $valorRepasse,
+                    'custo_total' => 0,
+                    'lucro_bruto' => 0,
+                    'transportadora' => $detail['shipping_carrier'] ?? null,
+                    'endereco_entrega' => isset($detail['recipient_address']) ? json_encode($detail['recipient_address']) : null,
+                    'data_pedido' => isset($detail['create_time']) ? date('Y-m-d H:i:s', $detail['create_time']) : null,
+                    'dados_marketplace' => json_encode($detail) // Garante conversão para JSON
+                ]
+            );
 
-        [
+            Log::info('[ShopeeOrderService] Pedido salvo/atualizado na tabela "pedidos"', [
+                'id' => $pedido->id,
+                'pedido_externo' => $pedido->pedido_externo
+            ]);
 
-            'pedido_externo' => $orderSn
+            /*
+             * Recria itens
+             */
+            $pedido->itens()->delete();
 
-        ],
+            $custoTotal = 0;
 
-        [
+            foreach ($detail['item_list'] ?? [] as $item) {
+                $produto = null;
+                $variacao = null;
 
-            'origem' => 'shopee',
+                if (!empty($item['model_id'])) {
+                    $variacao = ProductVariation::where('shopee_model_id', $item['model_id'])->first();
+                    if ($variacao) {
+                        $produto = $variacao->produto;
+                    }
+                }
 
+                if (!$produto) {
+                    $produto = Product::where('shopee_item_id', $item['item_id'] ?? 0)->first();
+                }
 
-            'status_marketplace' =>
-                $detail['order_status']
-                ?? null,
+                $custoUnitario = $variacao->custo ?? ($produto->preco_custo ?? 0);
+                $quantidade = $item['model_quantity_purchased'] ?? 1;
+                $custoItem = $custoUnitario * $quantidade;
+                $custoTotal += $custoItem;
 
+                $valorItem = ($item['model_discounted_price'] ?? 0) * $quantidade;
 
-            'usuario_cliente' =>
-                $detail['buyer_username']
-                ?? null,
-
-
-            'valor_total' =>
-                $valorTotal,
-
-
-            'valor_produtos' =>
-                $valorProdutos,
-
-
-            'taxas_marketplace' =>
-                $taxasMarketplace,
-
-
-            'valor_repasse' =>
-                $valorRepasse,
-
-
-            'custo_total' =>
-                0,
-
-
-            'lucro_bruto' =>
-                0,
-
-
-            'transportadora' =>
-                $detail['shipping_carrier']
-                ?? null,
-
-
-            'endereco_entrega' =>
-                $detail['recipient_address']
-                ?? null,
-
-
-            'data_pedido' =>
-
-                isset($detail['create_time'])
-
-                    ?
-
-                    date(
-                        'Y-m-d H:i:s',
-                        $detail['create_time']
-                    )
-
-                    :
-
-                    null,
-
-
-            'dados_marketplace' =>
-                $detail
-
-        ]
-
-    );
-
- Log::info('Processando pedido Shopee via Push', [
-        'order_sn' => $detail,
-    ]);
-
-    /*
-     * Recria itens
-     */
-    $pedido->itens()->delete();
-
-
-    $custoTotal = 0;
-
-
-    foreach ($detail['item_list'] ?? [] as $item) {
-
-
-        $produto = null;
-
-        $variacao = null;
-
-
-
-        /*
-         * Busca variação Shopee
-         */
-        if (!empty($item['model_id'])) {
-
-            $variacao = ProductVariation::where(
-                'shopee_model_id',
-                $item['model_id']
-            )->first();
-
-
-            if ($variacao) {
-
-                $produto = $variacao->produto;
-
+                PedidoItem::create([
+                    'pedido_id' => $pedido->id,
+                    'produto_id' => $produto?->id,
+                    'product_variation_id' => $variacao?->id,
+                    'marketplace_item_id' => $item['item_id'] ?? null,
+                    'marketplace_model_id' => $item['model_id'] ?? null,
+                    'nome_produto' => $item['item_name'] ?? '',
+                    'sku_marketplace' => $item['model_sku'] ?? null,
+                    'variacao' => $item['model_name'] ?? null,
+                    'quantidade' => $quantidade,
+                    'preco_unitario' => $item['model_discounted_price'] ?? 0,
+                    'valor_total' => $valorItem,
+                    'custo' => $custoItem,
+                    'lucro' => $valorItem - $custoItem,
+                    'dados_marketplace' => json_encode($item) // Garante conversão para JSON
+                ]);
             }
 
+            /*
+             * Atualiza financeiro final
+             */
+            $pedido->update([
+                'custo_total' => $custoTotal,
+                'lucro_bruto' => $valorRepasse - $custoTotal,
+            ]);
+
+            return $pedido;
+
+        } catch (\Throwable $e) {
+            Log::error('[ShopeeOrderService] ERRO ao salvar pedido no Banco de Dados', [
+                'order_sn' => $orderSn,
+                'mensagem' => $e->getMessage(),
+                'linha' => $e->getLine(),
+                'arquivo' => $e->getFile()
+            ]);
+            throw $e;
         }
-
-
-
-        /*
-         * Busca produto principal
-         */
-        if (!$produto) {
-
-            $produto = Product::where(
-                'shopee_item_id',
-                $item['item_id'] ?? 0
-            )->first();
-
-        }
-
-
-
-        /*
-         * Calcula custo
-         */
-        $custoUnitario = 0;
-
-
-        if ($variacao) {
-
-            $custoUnitario =
-                $variacao->custo ?? 0;
-
-        } elseif ($produto) {
-
-            $custoUnitario =
-                $produto->preco_custo ?? 0;
-
-        }
-
-
-
-        $quantidade =
-            $item['model_quantity_purchased']
-            ?? 1;
-
-
-
-        $custoItem =
-            $custoUnitario * $quantidade;
-
-
-
-        $custoTotal += $custoItem;
-
-
-
-        $valorItem =
-
-            (
-                $item['model_discounted_price']
-                ?? 0
-            )
-
-            *
-
-            $quantidade;
-
-
-
-        PedidoItem::create([
-
-
-            'pedido_id' =>
-                $pedido->id,
-
-
-            'produto_id' =>
-                $produto?->id,
-
-
-            'product_variation_id' =>
-                $variacao?->id,
-
-
-
-            'marketplace_item_id' =>
-                $item['item_id']
-                ?? null,
-
-
-            'marketplace_model_id' =>
-                $item['model_id']
-                ?? null,
-
-
-
-            'nome_produto' =>
-                $item['item_name']
-                ?? '',
-
-
-
-            'sku_marketplace' =>
-                $item['model_sku']
-                ?? null,
-
-
-
-            'variacao' =>
-                $item['model_name']
-                ?? null,
-
-
-
-            'quantidade' =>
-                $quantidade,
-
-
-
-            'preco_unitario' =>
-                $item['model_discounted_price']
-                ?? 0,
-
-
-
-            'valor_total' =>
-                $valorItem,
-
-
-
-            'custo' =>
-                $custoItem,
-
-
-
-            'lucro' =>
-                $valorItem - $custoItem,
-
-
-
-            'dados_marketplace' =>
-                $item
-
-        ]);
-
-    }
-
-
-
-    /*
-     * Atualiza financeiro final
-     */
-    $pedido->update([
-
-        'custo_total' =>
-            $custoTotal,
-
-
-        'lucro_bruto' =>
-            $valorRepasse - $custoTotal,
-
-    ]);
-
-
-
-    return $pedido;
 }
 
 private function getEscrowDetailBatch(array $orderSns): array

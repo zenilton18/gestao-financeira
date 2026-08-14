@@ -7936,3 +7936,4 @@ Stack trace:
 [stacktrace]
 #0 {main}
 "} 
+[2026-08-13 17:06:12] local.INFO: Shopee - refresh token {"status":200,"response":{"partner_id":2039071,"refresh_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAIossf40wYwn4WgiwY4AUABSAk.d9qzTkIuCX9XOdzAg6cnuTb4HVAUZvrAPT3zwD1NNmY","access_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAEossf40wYwofr8vwg4AUABSAk.GigyDAq4IVKCK2YYlGBL4letNVwkAR-DS5ytZghH8I4","expire_in":14400,"request_id":"e3e3e7f358f33c31d9043215de81d600","error":"","message":"","shop_id":1841274536}} 
