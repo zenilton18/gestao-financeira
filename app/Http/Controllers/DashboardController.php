@@ -209,9 +209,7 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        //   echo('<pre>');
-        // print_r(dd($queryLancamentos->toRawSql()));
-        // echo('</pre>'); die();
+
 
         return view('dashboard', compact(
             'saldoAtual',

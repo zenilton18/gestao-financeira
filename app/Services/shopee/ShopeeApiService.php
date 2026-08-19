@@ -66,88 +66,84 @@ class ShopeeApiService
 
 
 
-    /**
-     * Faz requisições GET para API Shopee
-     */
-    public function get(
-        string $path,
-        array $query = []
-    ): array {
+   public function get(
+    string $path,
+    array $query = []
+): array {
 
-     Log::info('ENTROU NO GET SHOPEE', [
-        'path' => $path
+    Log::info('ENTROU NO GET SHOPEE', [
+        'path' => $path,
+        'query' => $query
     ]);
 
-        $this->checkToken();
+
+    $this->checkToken();
 
 
-        $timestamp = time();
+    $timestamp = time();
 
 
-        $signString =
-            $this->partnerId .
-            $path .
-            $timestamp .
-            $this->connection->access_token .
-            $this->connection->shop_id;
+    $signString =
+        $this->partnerId .
+        $path .
+        $timestamp .
+        $this->connection->access_token .
+        $this->connection->shop_id;
 
 
-
-        $sign = hash_hmac(
-            'sha256',
-            $signString,
-            $this->partnerKey
-        );
-
+    $sign = hash_hmac(
+        'sha256',
+        $signString,
+        $this->partnerKey
+    );
 
 
-        $params = array_merge(
+    $params = array_merge(
 
-            [
+        [
 
-                'partner_id' => $this->partnerId,
+            'partner_id' =>
+                $this->partnerId,
 
-                'timestamp' => $timestamp,
+            'timestamp' =>
+                $timestamp,
 
-                'access_token' =>
-                    $this->connection->access_token,
+            'access_token' =>
+                $this->connection->access_token,
 
-                'shop_id' =>
-                    (int) $this->connection->shop_id,
+            'shop_id' =>
+                (int) $this->connection->shop_id,
 
-                'sign' => $sign
+            'sign' =>
+                $sign
 
-            ],
+        ],
 
-            $query
+        $query
 
-        );
-
-
-
-        /**
-         * Ambiente local
-         * Desabilita validação SSL
-         */
-        $client = new Client([
-
-            'verify' => false,
-
-            'curl' => [
-
-                CURLOPT_SSL_VERIFYPEER => false,
-
-                CURLOPT_SSL_VERIFYHOST => false,
-
-            ],
-
-            'connect_timeout' => 30,
-
-            'timeout' => 400,
-
-        ]);
+    );
 
 
+    $client = new Client([
+
+        'verify' => false,
+
+        'curl' => [
+
+            CURLOPT_SSL_VERIFYPEER => false,
+
+            CURLOPT_SSL_VERIFYHOST => false,
+
+        ],
+
+        'connect_timeout' => 30,
+
+        'timeout' => 400,
+
+    ]);
+
+
+    try {
 
         $response = $client->get(
 
@@ -162,16 +158,118 @@ class ShopeeApiService
         );
 
 
+        $body =
+            $response
+                ->getBody()
+                ->getContents();
 
-        return json_decode(
 
-            $response->getBody()->getContents(),
+        $data =
+            json_decode(
+                $body,
+                true
+            );
 
-            true
 
+        if (!is_array($data)) {
+
+            throw new \Exception(
+                'Resposta inválida da API Shopee.'
+            );
+
+        }
+
+
+        return $data;
+
+
+    } catch (\GuzzleHttp\Exception\ClientException $e) {
+
+        $statusCode =
+            $e->getResponse()
+                ?->getStatusCode();
+
+
+        $responseBody = null;
+
+
+        if ($e->getResponse()) {
+
+            $responseBody =
+                json_decode(
+                    $e->getResponse()
+                        ->getBody()
+                        ->getContents(),
+                    true
+                );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RATE LIMIT SHOPEE
+        |--------------------------------------------------------------------------
+        */
+
+        if ($statusCode === 429) {
+
+            Log::warning(
+                '[ShopeeApiService] Rate limit atingido',
+                [
+
+                    'path' =>
+                        $path,
+
+                    'query' =>
+                        $query,
+
+                    'response' =>
+                        $responseBody,
+
+                ]
+            );
+
+
+            throw new \Exception(
+                'A Shopee limitou temporariamente as consultas da API. ' .
+                'Aguarde alguns minutos e tente novamente.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | OUTROS ERROS HTTP
+        |--------------------------------------------------------------------------
+        */
+
+        Log::error(
+            '[ShopeeApiService] Erro HTTP',
+            [
+
+                'status' =>
+                    $statusCode,
+
+                'path' =>
+                    $path,
+
+                'query' =>
+                    $query,
+
+                'response' =>
+                    $responseBody,
+
+            ]
         );
 
+
+        throw $e;
+
     }
+
+}
 
 
 
@@ -288,6 +386,68 @@ class ShopeeApiService
 
         );
 
+    }
+
+    /**
+     * Faz requisição POST para a API Shopee e retorna o conteúdo bruto da resposta (PDF / Binary)
+     */
+    public function postRaw(
+        string $path,
+        array $body = [],
+        array $query = []
+    ): string {
+        $this->checkToken();
+
+        $timestamp = time();
+
+        $signString =
+            $this->partnerId .
+            $path .
+            $timestamp .
+            $this->connection->access_token .
+            $this->connection->shop_id;
+
+        $sign = hash_hmac(
+            'sha256',
+            $signString,
+            $this->partnerKey
+        );
+
+        $params = array_merge(
+            [
+                'partner_id'   => $this->partnerId,
+                'timestamp'    => $timestamp,
+                'access_token' => $this->connection->access_token,
+                'shop_id'      => (int) $this->connection->shop_id,
+                'sign'         => $sign
+            ],
+            $query
+        );
+
+        $client = new Client([
+            'verify' => false,
+            'curl' => [
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+            ],
+            'connect_timeout' => 30,
+            'timeout' => 180,
+        ]);
+
+        $response = $client->post(
+            $this->baseUrl .
+            $path .
+            '?' .
+            http_build_query($params),
+            [
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => $body
+            ]
+        );
+
+        return $response->getBody()->getContents();
     }
 
 }

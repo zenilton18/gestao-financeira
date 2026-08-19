@@ -4,23 +4,23 @@
 
 @if(session('success'))
 
-<div class="alert alert-success shadow-sm">
-    <i class="bi bi-check-circle"></i>
-    {{ session('success') }}
-</div>
+    <div class="alert alert-success shadow-sm">
+        <i class="bi bi-check-circle"></i>
+        {{ session('success') }}
+    </div>
 
 @endif
 
 
 @if(session('error'))
 
-<div class="alert alert-danger shadow-sm">
+    <div class="alert alert-danger shadow-sm">
 
-    <i class="bi bi-exclamation-triangle"></i>
+        <i class="bi bi-exclamation-triangle"></i>
 
-    {{ session('error') }}
+        {{ session('error') }}
 
-</div>
+    </div>
 
 @endif
 
@@ -29,527 +29,856 @@
 <div class="container-fluid">
 
 
-{{-- Cabeçalho --}}
+    {{-- ========================================================= --}}
+    {{-- CABEÇALHO --}}
+    {{-- ========================================================= --}}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+                Dashboard Shopee
+            </h2>
+
+            <span class="text-muted">
+                Visão financeira e operacional
+            </span>
+
+        </div>
 
 
-    <div>
+        {{-- ===================================================== --}}
+        {{-- FILTRO PERÍODO --}}
+        {{-- ===================================================== --}}
 
-        <h2 class="fw-bold mb-1">
-            Dashboard Shopee
-        </h2>
+        <form action="{{ route('shopee.dashboard') }}"
+              method="GET"
+              class="d-flex gap-2 align-items-center">
+
+            <select name="periodo"
+                    id="periodo"
+                    class="form-select">
+
+                <option value="today"
+                    {{ request('periodo', 'today') == 'today' ? 'selected' : '' }}>
+                    Hoje
+                </option>
+
+                <option value="yesterday"
+                    {{ request('periodo') == 'yesterday' ? 'selected' : '' }}>
+                    Ontem
+                </option>
+
+                <option value="week"
+                    {{ request('periodo') == 'week' ? 'selected' : '' }}>
+                    Esta semana
+                </option>
+
+                <option value="30"
+                    {{ request('periodo') == '30' ? 'selected' : '' }}>
+                    Últimos 30 dias
+                </option>
+
+                <option value="month"
+                    {{ request('periodo') == 'month' ? 'selected' : '' }}>
+                    Este mês
+                </option>
+
+                <option value="last_month"
+                    {{ request('periodo') == 'last_month' ? 'selected' : '' }}>
+                    Mês anterior
+                </option>
+
+                <option value="custom"
+                    {{ request('periodo') == 'custom' ? 'selected' : '' }}>
+                    Personalizado
+                </option>
+
+            </select>
 
 
-        <span class="text-muted">
-            Visão financeira e operacional
-        </span>
+            {{-- ================================================= --}}
+            {{-- DATAS PERSONALIZADAS --}}
+            {{-- ================================================= --}}
+
+            <div id="datas-personalizadas"
+                 class="gap-2"
+                 style="display:none;">
+
+                <input type="date"
+                       id="data_inicio"
+                       name="data_inicio"
+                       class="form-control"
+                       value="{{ request('data_inicio') }}">
+
+                <input type="date"
+                       id="data_fim"
+                       name="data_fim"
+                       class="form-control"
+                       value="{{ request('data_fim') }}">
+
+            </div>
+
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                Filtrar
+
+            </button>
+
+        </form>
+
+    </div>
+
+
+
+    {{-- ========================================================= --}}
+    {{-- CARDS FINANCEIROS --}}
+    {{-- ========================================================= --}}
+
+    <div class="row g-4">
+
+
+        {{-- ===================================================== --}}
+        {{-- FATURAMENTO --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        FATURAMENTO
+                    </small>
+
+                    <h2 class="fw-bold mt-2">
+
+                        R$
+                        {{ number_format(
+                            $cards['faturamento'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Vendas realizadas
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- CUSTO PRODUTOS --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        CUSTO PRODUTOS
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-danger">
+
+                        R$
+                        {{ number_format(
+                            $cards['custo_produtos'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Mercadoria vendida
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- INVESTIMENTO ADS --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        INVESTIMENTO EM ADS
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-danger">
+
+                        R$
+                        {{ number_format(
+                            $cards['ads'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Publicidade Shopee
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- TAXAS SHOPEE --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        TAXAS SHOPEE
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-warning">
+
+                        R$
+                        {{ number_format(
+                            $cards['taxas_marketplace'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Comissão e taxas
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- VALOR LÍQUIDO --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        VALOR LÍQUIDO
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-info">
+
+                        R$
+                        {{ number_format(
+                            $cards['valor_liquido_estimado']
+                                ?? $cards['valor_liquido']
+                                ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Após taxas
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- LUCRO BRUTO --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        LUCRO BRUTO
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-success">
+
+                        R$
+                        {{ number_format(
+                            $cards['lucro_bruto'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Antes dos custos operacionais
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- LUCRO LÍQUIDO --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        LUCRO LÍQUIDO
+                    </small>
+
+                    <h2 class="fw-bold mt-2 text-primary">
+
+                        R$
+                        {{ number_format(
+                            $cards['lucro_liquido'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Resultado final
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- MARGEM --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        MARGEM
+                    </small>
+
+                    <h2 class="fw-bold mt-2">
+
+                        {{ number_format(
+                            $cards['margem'] ?? 0,
+                            2,
+                            ',',
+                            '.'
+                        ) }}%
+
+                    </h2>
+
+                    <span class="text-success">
+                        Rentabilidade
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        {{-- ===================================================== --}}
+        {{-- PEDIDOS --}}
+        {{-- ===================================================== --}}
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        PEDIDOS
+                    </small>
+
+                    <h2 class="fw-bold mt-2">
+
+                        {{ number_format(
+                            $cards['pedidos'] ?? 0,
+                            0,
+                            ',',
+                            '.'
+                        ) }}
+
+                    </h2>
+
+                    <span class="text-muted">
+                        Pedidos realizados
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
 
 
     </div>
 
 
 
-    {{-- Filtro período --}}
+    {{-- ========================================================= --}}
+    {{-- INDICADORES + DESEMPENHO ADS --}}
+    {{-- ========================================================= --}}
 
-    <form action="{{ route('shopee.dashboard') }}"
-          method="GET"
-          class="d-flex gap-2">
+    <div class="row mt-4 g-4">
 
 
-        <select name="periodo"
-                class="form-select">
+        {{-- ===================================================== --}}
+        {{-- INDICADORES --}}
+        {{-- ===================================================== --}}
 
+        <div class="col-lg-4">
 
-            <option value="today"
-                {{ request('periodo','today') == 'today' ? 'selected' : '' }}>
-                Hoje
-            </option>
+            <div class="card shadow-sm border-0 h-100">
 
+                <div class="card-header bg-white">
 
-            <option value="yesterday"
-                {{ request('periodo') == 'yesterday' ? 'selected' : '' }}>
-                Ontem
-            </option>
+                    <strong>
+                        Indicadores
+                    </strong>
 
+                </div>
 
-            <option value="30"
-                {{ request('periodo') == '30' ? 'selected' : '' }}>
-                Últimos 30 dias
-            </option>
 
+                <div class="card-body">
 
-            <option value="month"
-                {{ request('periodo') == 'month' ? 'selected' : '' }}>
-                Este mês
-            </option>
+                    <table class="table mb-0">
 
 
-            <option value="last_month"
-                {{ request('periodo') == 'last_month' ? 'selected' : '' }}>
-                Mês anterior
-            </option>
+                        {{-- Ticket médio --}}
 
+                        <tr>
 
-        </select>
+                            <td>
+                                Ticket médio
+                            </td>
 
+                            <td class="text-end fw-bold">
 
-        <button class="btn btn-primary">
-            Filtrar
-        </button>
+                                R$
+                                {{ number_format(
+                                    $cards['ticket_medio'] ?? 0,
+                                    2,
+                                    ',',
+                                    '.'
+                                ) }}
 
+                            </td>
 
-    </form>
+                        </tr>
 
 
-</div>
+                        {{-- Ads --}}
 
+                        <tr>
 
+                            <td>
+                                Investimento Ads
+                            </td>
 
+                            <td class="text-end fw-bold text-danger">
 
+                                R$
+                                {{ number_format(
+                                    $cards['ads'] ?? 0,
+                                    2,
+                                    ',',
+                                    '.'
+                                ) }}
 
-{{-- Cards Financeiros --}}
+                            </td>
 
-<div class="row g-4">
+                        </tr>
 
 
+                        {{-- Percentual Ads --}}
 
-{{-- Faturamento --}}
+                        <tr>
 
-<div class="col-xl-3 col-md-6">
+                            <td>
+                                Ads / Faturamento
+                            </td>
 
-<div class="card shadow-sm border-0 h-100">
+                            <td class="text-end fw-bold">
 
-<div class="card-body">
+                                {{ number_format(
+                                    $cards['percentual_ads'] ?? 0,
+                                    2,
+                                    ',',
+                                    '.'
+                                ) }}%
 
-<small class="text-muted">
-FATURAMENTO
-</small>
+                            </td>
 
+                        </tr>
 
-<h2 class="fw-bold mt-2">
 
-R$
-{{ number_format($cards['faturamento'] ?? 0,2,',','.') }}
+                        {{-- Custo operacional --}}
 
-</h2>
+                        <tr>
 
+                            <td>
+                                Custo operacional
+                            </td>
 
-</div>
+                            <td class="text-end fw-bold">
 
-</div>
+                                R$
+                                {{ number_format(
+                                    $cards['custo_operacional'] ?? 0,
+                                    2,
+                                    ',',
+                                    '.'
+                                ) }}
 
-</div>
+                            </td>
 
+                        </tr>
 
 
+                        {{-- Margem líquida --}}
 
+                        <tr>
 
+                            <td>
+                                Margem líquida
+                            </td>
 
-{{-- Custo Produtos --}}
+                            <td class="text-end fw-bold text-success">
 
-<div class="col-xl-3 col-md-6">
+                                {{ number_format(
+                                    $cards['margem'] ?? 0,
+                                    2,
+                                    ',',
+                                    '.'
+                                ) }}%
 
-<div class="card shadow-sm border-0 h-100">
+                            </td>
 
-<div class="card-body">
+                        </tr>
 
 
-<small class="text-muted">
-CUSTO PRODUTOS
-</small>
+                    </table>
 
+                </div>
 
-<h2 class="fw-bold mt-2 text-danger">
+            </div>
 
-R$
-{{ number_format($cards['custo_produtos'] ?? 0,2,',','.') }}
+        </div>
 
-</h2>
 
 
-<span class="text-muted">
-Mercadoria vendida
-</span>
+        {{-- ===================================================== --}}
+        {{-- DESEMPENHO ADS --}}
+        {{-- ===================================================== --}}
 
+        <div class="col-lg-8">
 
-</div>
+            <div class="card shadow-sm border-0 h-100">
 
-</div>
 
-</div>
+                <div class="card-header bg-white">
 
+                    <strong>
+                        Desempenho Shopee Ads
+                    </strong>
 
+                </div>
 
 
+                <div class="card-body">
 
 
-{{-- Taxas Shopee --}}
+                    <div class="row g-4">
 
-<div class="col-xl-3 col-md-6">
 
-<div class="card shadow-sm border-0 h-100">
+                        {{-- Investimento --}}
 
-<div class="card-body">
+                        <div class="col-md-4">
 
+                            <div class="p-3 rounded bg-light">
 
-<small class="text-muted">
-TAXAS SHOPEE
-</small>
+                                <small class="text-muted">
+                                    INVESTIMENTO
+                                </small>
 
+                                <h4 class="fw-bold text-danger mt-2">
 
-<h2 class="fw-bold mt-2 text-warning">
+                                    R$
+                                    {{ number_format(
+                                        $cards['ads'] ?? 0,
+                                        2,
+                                        ',',
+                                        '.'
+                                    ) }}
 
-R$
-{{ number_format($cards['taxas_marketplace'] ?? 0,2,',','.') }}
+                                </h4>
 
-</h2>
+                            </div>
 
+                        </div>
 
-<span class="text-muted">
-Comissão estimada
-</span>
 
+                        {{-- GMV Ads --}}
 
-</div>
+                        <div class="col-md-4">
 
-</div>
+                            <div class="p-3 rounded bg-light">
 
-</div>
+                                <small class="text-muted">
+                                    GMV ADS
+                                </small>
 
+                                <h4 class="fw-bold mt-2">
 
+                                    R$
+                                    {{ number_format(
+                                        $cards['ads_gmv'] ?? 0,
+                                        2,
+                                        ',',
+                                        '.'
+                                    ) }}
 
+                                </h4>
 
+                            </div>
 
+                        </div>
 
-{{-- Valor Líquido --}}
 
-<div class="col-xl-3 col-md-6">
+                        {{-- ROAS --}}
 
-<div class="card shadow-sm border-0 h-100">
+                        <div class="col-md-4">
 
-<div class="card-body">
+                            <div class="p-3 rounded bg-light">
 
+                                <small class="text-muted">
+                                    ROAS
+                                </small>
 
-<small class="text-muted">
-VALOR LÍQUIDO
-</small>
+                                <h4 class="fw-bold text-success mt-2">
 
+                                    {{ number_format(
+                                        $cards['ads_roas'] ?? 0,
+                                        2,
+                                        ',',
+                                        '.'
+                                    ) }}
 
-<h2 class="fw-bold mt-2 text-info">
+                                </h4>
 
-R$
-{{ number_format($cards['valor_liquido_estimado'] ?? 0,2,',','.') }}
+                            </div>
 
-</h2>
+                        </div>
 
 
-<span class="text-muted">
-Após taxas e operação
-</span>
+                        {{-- Impressões --}}
 
+                        <div class="col-md-4">
 
-</div>
+                            <div class="p-3 rounded bg-light">
 
-</div>
+                                <small class="text-muted">
+                                    IMPRESSÕES
+                                </small>
 
-</div>
+                                <h4 class="fw-bold mt-2">
 
+                                    {{ number_format(
+                                        $cards['ads_impressions'] ?? 0,
+                                        0,
+                                        ',',
+                                        '.'
+                                    ) }}
 
+                                </h4>
 
+                            </div>
 
+                        </div>
 
 
-{{-- Lucro Bruto --}}
+                        {{-- Cliques --}}
 
-<div class="col-xl-3 col-md-6">
+                        <div class="col-md-4">
 
-<div class="card shadow-sm border-0 h-100">
+                            <div class="p-3 rounded bg-light">
 
-<div class="card-body">
+                                <small class="text-muted">
+                                    CLIQUES
+                                </small>
 
+                                <h4 class="fw-bold mt-2">
 
-<small class="text-muted">
-LUCRO BRUTO
-</small>
+                                    {{ number_format(
+                                        $cards['ads_clicks'] ?? 0,
+                                        0,
+                                        ',',
+                                        '.'
+                                    ) }}
 
+                                </h4>
 
-<h2 class="fw-bold mt-2 text-success">
+                            </div>
 
-R$
-{{ number_format($cards['lucro_bruto'] ?? 0,2,',','.') }}
+                        </div>
 
-</h2>
 
+                        {{-- Pedidos Ads --}}
 
-<span class="text-muted">
-Antes dos custos operacionais
-</span>
+                        <div class="col-md-4">
 
+                            <div class="p-3 rounded bg-light">
 
-</div>
+                                <small class="text-muted">
+                                    PEDIDOS ADS
+                                </small>
 
-</div>
+                                <h4 class="fw-bold mt-2">
 
-</div>
+                                    {{ number_format(
+                                        $cards['ads_pedidos'] ?? 0,
+                                        0,
+                                        ',',
+                                        '.'
+                                    ) }}
 
+                                </h4>
 
+                            </div>
 
+                        </div>
 
 
+                    </div>
 
-{{-- Lucro Líquido --}}
 
-<div class="col-xl-3 col-md-6">
+                </div>
 
-<div class="card shadow-sm border-0 h-100">
+            </div>
 
-<div class="card-body">
+        </div>
 
 
-<small class="text-muted">
-LUCRO LÍQUIDO
-</small>
+    </div>
 
 
-<h2 class="fw-bold mt-2 text-primary">
 
-R$
-{{ number_format($cards['lucro_liquido'] ?? 0,2,',','.') }}
+    {{-- ========================================================= --}}
+    {{-- EVOLUÇÃO FINANCEIRA --}}
+    {{-- ========================================================= --}}
 
-</h2>
+    <div class="row mt-4">
 
 
-<span class="text-muted">
-Resultado final
-</span>
+        <div class="col-12">
 
+            <div class="card shadow-sm border-0">
 
-</div>
 
-</div>
+                <div class="card-header bg-white">
 
-</div>
+                    <strong>
+                        Evolução financeira
+                    </strong>
 
+                </div>
 
 
+                <div class="card-body">
 
 
+                    <div style="
+                        height:300px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        color:#999;
+                    ">
 
-{{-- Margem --}}
+                        Gráfico de vendas por período
 
-<div class="col-xl-3 col-md-6">
+                    </div>
 
-<div class="card shadow-sm border-0 h-100">
 
-<div class="card-body">
+                </div>
 
+            </div>
 
-<small class="text-muted">
-MARGEM
-</small>
+        </div>
 
 
-<h2 class="fw-bold mt-2">
-
-{{ number_format($cards['margem'] ?? 0,2,',','.') }}%
-
-</h2>
-
-
-<span class="text-success">
-Rentabilidade
-</span>
-
-
-</div>
-
-</div>
-
-</div>
-
-
-
-
-
-
-{{-- Pedidos --}}
-
-<div class="col-xl-3 col-md-6">
-
-<div class="card shadow-sm border-0 h-100">
-
-<div class="card-body">
-
-
-<small class="text-muted">
-PEDIDOS
-</small>
-
-
-<h2 class="fw-bold mt-2">
-
-{{ number_format($cards['pedidos'] ?? 0,0,',','.') }}
-
-</h2>
-
-
-</div>
-
-</div>
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-{{-- Indicadores --}}
-
-<div class="row mt-4">
-
-
-<div class="col-lg-4">
-
-
-<div class="card shadow-sm border-0">
-
-
-<div class="card-header bg-white">
-
-<strong>
-Indicadores
-</strong>
-
-</div>
-
-
-<div class="card-body">
-
-
-<table class="table">
-
-
-<tr>
-
-<td>
-Ticket médio
-</td>
-
-
-<td class="text-end fw-bold">
-
-R$
-{{ number_format($cards['ticket_medio'] ?? 0,2,',','.') }}
-
-</td>
-
-
-</tr>
-
-
-
-<tr>
-
-<td>
-Custo operacional
-</td>
-
-
-<td class="text-end fw-bold">
-
-R$
-{{ number_format($cards['custo_operacional'] ?? 0,2,',','.') }}
-
-</td>
-
-
-</tr>
-
-
-
-<tr>
-
-<td>
-Ads
-</td>
-
-
-<td class="text-end fw-bold">
-
-R$
-{{ number_format($cards['ads'] ?? 0,2,',','.') }}
-
-</td>
-
-
-</tr>
-
-
-
-</table>
-
-
-</div>
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-<div class="col-lg-8">
-
-
-<div class="card shadow-sm border-0">
-
-
-<div class="card-header bg-white">
-
-<strong>
-Evolução financeira
-</strong>
-
-
-</div>
-
-
-
-<div class="card-body">
-
-
-<div style="
-height:300px;
-display:flex;
-align-items:center;
-justify-content:center;
-color:#999;
-">
-
-
-Gráfico de vendas por período
-
-
-</div>
-
-
-</div>
-
-
-</div>
-
-
-</div>
+    </div>
 
 
 
@@ -557,7 +886,103 @@ Gráfico de vendas por período
 
 
 
-</div>
+{{-- ============================================================= --}}
+{{-- JAVASCRIPT FILTRO PERSONALIZADO --}}
+{{-- ============================================================= --}}
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+
+    const periodo =
+        document.getElementById('periodo');
+
+
+    const datas =
+        document.getElementById(
+            'datas-personalizadas'
+        );
+
+
+    const dataInicio =
+        document.getElementById(
+            'data_inicio'
+        );
+
+
+    const dataFim =
+        document.getElementById(
+            'data_fim'
+        );
+
+
+    if (
+        !periodo ||
+        !datas ||
+        !dataInicio ||
+        !dataFim
+    ) {
+
+        return;
+
+    }
+
+
+    function atualizarDatas() {
+
+
+        const personalizado =
+            periodo.value === 'custom';
+
+
+        if (personalizado) {
+
+
+            datas.style.display =
+                'flex';
+
+
+            dataInicio.disabled =
+                false;
+
+
+            dataFim.disabled =
+                false;
+
+
+        } else {
+
+
+            datas.style.display =
+                'none';
+
+
+            dataInicio.disabled =
+                true;
+
+
+            dataFim.disabled =
+                true;
+
+
+        }
+
+    }
+
+
+    periodo.addEventListener(
+        'change',
+        atualizarDatas
+    );
+
+
+    atualizarDatas();
+
+
+});
+
+</script>
 
 
 @endsection

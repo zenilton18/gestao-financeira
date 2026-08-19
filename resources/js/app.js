@@ -132,5 +132,6 @@ Alpine.data('financeiro', () => ({
 
 }));
 
+
 // Inicializa Alpine
 Alpine.start();

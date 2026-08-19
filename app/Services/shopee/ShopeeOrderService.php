@@ -118,9 +118,9 @@ class ShopeeOrderService
 
                     'time_range_field' => 'create_time',
 
-                    'time_from' => strtotime('2026-08-06 00:00:00'),
+                    'time_from' => strtotime('2026-08-17 00:00:00'),
 
-                    'time_to' => strtotime('2026-08-10 23:59:59'),
+                    'time_to' => strtotime('2026-08-30 23:59:59'),
 
                     'page_size' => 100,
 
