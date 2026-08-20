@@ -209,6 +209,29 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        // =========================================================
+        // 6. FATURAMENTO POR DIA DO MÊS
+        // =========================================================
+
+        $faturamentoPorDia = Conta::apenasFinanceiro()
+            ->where('tipo', 'receber')
+            ->where('status', 'pago')
+            ->whereMonth('data_vencimento', $mesAtual)
+            ->whereYear('data_vencimento', $anoAtual)
+            ->whereDate('data_vencimento', '<=', $hoje)
+            ->selectRaw('DAY(data_vencimento) as dia, SUM(valor) as total')
+            ->groupByRaw('DAY(data_vencimento)')
+            ->orderByRaw('DAY(data_vencimento)')
+            ->get();
+
+        $labelsFaturamento = [];
+        $valoresFaturamento = [];
+
+        foreach ($faturamentoPorDia as $item) {
+            $labelsFaturamento[] = str_pad($item->dia, 2, '0', STR_PAD_LEFT);
+            $valoresFaturamento[] = (float) $item->total;
+        }
+
 
 
         return view('dashboard', compact(
@@ -221,7 +244,9 @@ class DashboardController extends Controller
             'faturamentoOrigem',
             'produtosMetricas',
             'ultimosLancamentos',
-            'filtro'
+            'filtro',
+            'labelsFaturamento',
+            'valoresFaturamento'
         ));
     }
 }

@@ -583,6 +583,44 @@
 
         </div>
 
+        <div class="row g-3 mb-4">
+
+    <div class="col-12">
+
+        <div class="card shadow-sm border-0 rounded-3">
+
+            <div class="card-header bg-transparent border-0 pt-3 px-3">
+
+                <h6 class="fw-bold text-uppercase small text-muted mb-0">
+
+                    <i class="bi bi-bar-chart-line me-1"></i>
+
+                    Faturamento por Dia
+
+                </h6>
+
+                <span class="text-muted small">
+                    Valores recebidos por dia no mês atual
+                </span>
+
+            </div>
+
+            <div class="card-body p-3">
+
+                <div style="height: 280px;">
+
+                    <canvas id="graficoFaturamentoDia"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 
         <div class="card-body p-0">
 
@@ -797,6 +835,90 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+    const ctxFaturamentoDia = document.getElementById('graficoFaturamentoDia');
+
+if (ctxFaturamentoDia) {
+
+    new Chart(ctxFaturamentoDia, {
+
+        type: 'bar',
+
+        data: {
+
+            labels: @json($labelsFaturamento),
+
+            datasets: [{
+
+                label: 'Faturamento',
+
+                data: @json($valoresFaturamento),
+
+                borderRadius: 6,
+
+                borderWidth: 0
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+                    display: false
+                },
+
+                tooltip: {
+
+                    callbacks: {
+
+                        label: function(context) {
+
+                            return 'R$ ' +
+                                Number(context.raw)
+                                    .toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 2
+                                    });
+
+                        }
+
+                    }
+
+                }
+
+            },
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true,
+
+                    ticks: {
+
+                        callback: function(value) {
+
+                            return 'R$ ' +
+                                Number(value).toLocaleString('pt-BR');
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    });
+
+}
 
     document.addEventListener('DOMContentLoaded', function () {
 

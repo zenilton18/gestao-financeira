@@ -1312,3 +1312,8 @@
 [2026-08-19 06:40:07] local.INFO: Shopee - refresh token {"status":200,"response":{"partner_id":2039071,"refresh_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAIo-POV1AYwr_7xjwM4AUABSAk.tkDU2_kKhPVkIGIniRMWSY6LQLJ7oPH38CM48kbaeiQ","access_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAEo-POV1AYwvoeF0Qs4AUABSAk.v76oLhoiA6YgpaB14wcnawwo-jJxpAPKBJ9YxQmGy5g","expire_in":14400,"request_id":"e3e3e7f3596330585fe1027764b7a900","error":"","message":"","shop_id":1841274536}} 
 [2026-08-19 06:40:08] local.INFO: [ShopeeAdsService] Consultando Ads por hora {"data":"2026-08-19"} 
 [2026-08-19 06:40:08] local.INFO: ENTROU NO GET SHOPEE {"path":"/api/v2/ads/get_all_cpc_ads_hourly_performance","query":{"performance_date":"19-08-2026"}} 
+[2026-08-19 19:42:44] local.INFO: [ShopeeAdsService] Consultando Ads por hora {"data":"2026-08-19"} 
+[2026-08-19 19:42:44] local.INFO: ENTROU NO GET SHOPEE {"path":"/api/v2/ads/get_all_cpc_ads_hourly_performance","query":{"performance_date":"19-08-2026"}} 
+[2026-08-20 12:25:56] local.INFO: Shopee - refresh token {"status":200,"response":{"partner_id":2039071,"refresh_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAIohLmc1AYw1sqP4wo4AUABSAk.EfJOR1EfCGYj-AFgCc1MvHyY7QJdZXir_CkO2TGOrc4","access_token":"eyJhbGciOiJIUzI1NiJ9.CJ-6fBABGKi9_u0GIAEohLmc1AYwhZu1zgs4AUABSAk.DyQddRbD6GXRrHMOLThD8B0rIKKE6lxfwwSEbYKYWWo","expire_in":14400,"request_id":"e3e3e7f3597c22e129c0e5c11b733800","error":"","message":"","shop_id":1841274536}} 
+[2026-08-20 12:25:57] local.INFO: [ShopeeAdsService] Consultando Ads por hora {"data":"2026-08-20"} 
+[2026-08-20 12:25:57] local.INFO: ENTROU NO GET SHOPEE {"path":"/api/v2/ads/get_all_cpc_ads_hourly_performance","query":{"performance_date":"20-08-2026"}} 
