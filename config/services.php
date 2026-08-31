@@ -2,6 +2,7 @@
 
 return [
 
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
@@ -16,6 +17,13 @@ return [
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
+    ],
+
+    'mercadolivre' => [
+        'client_id' => env('MERCADOLIVRE_CLIENT_ID'),
+        'client_secret' => env('MERCADOLIVRE_CLIENT_SECRET'),
+        'redirect_uri' => env('MERCADOLIVRE_REDIRECT_URI'),
+        'webhook_url' => env('MERCADOLIVRE_WEBHOOK_URL'),
     ],
 
     'resend' => [

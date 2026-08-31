@@ -36,7 +36,7 @@ class ShopeeOrderService
 
         $orders = $this->getOrderList();
        
-        $orderSns = [];
+        $orderSns = ['2608222VQJ6XC4'];
 
         foreach ($orders as $order) {
 
@@ -209,218 +209,352 @@ class ShopeeOrderService
     }
 
    
+   
     public function getOrderDetail(string $orderSn)
     {
-
-    
-
         $response = $this->api->get(
-
             '/api/v2/order/get_order_detail',
-
             [
+                'order_sn_list' => $orderSn,
 
-                'order_sn_list'=>$orderSn,
-
-
-               'response_optional_fields' => 
-                    'buyer_user_id,buyer_username,recipient_address,item_list,payment_info,shipping_carrier'
-
+                'response_optional_fields' =>
+                    'buyer_user_id,buyer_username,recipient_address,item_list,payment_info,shipping_carrier,package_list'
             ]
-
         );
+
         if (isset($response['error']) && $response['error']) {
+
             Log::error('[ShopeeOrderService] Erro na API get_order_detail', [
                 'order_sn' => $orderSn,
                 'response' => $response
             ]);
-            throw new \Exception($response['message'] ?? 'Erro ao buscar detalhe do pedido na Shopee');
+
+            throw new \Exception(
+                $response['message']
+                ?? 'Erro ao buscar detalhe do pedido na Shopee'
+            );
         }
 
-        return
-            $response['response']['order_list'][0]
-            ?? [];
+        $detail = $response['response']['order_list'][0] ?? [];
 
+        /*
+        * Log temporário para conferirmos
+        * exatamente o que a Shopee está retornando.
+        */
+        Log::info('[ShopeeOrderService] Detalhes logísticos do pedido', [
+            'order_sn' => $orderSn,
+            'package_list' => $detail['package_list'] ?? [],
+            'shipping_carrier' => $detail['shipping_carrier'] ?? null,
+        ]);
+
+        return $detail;
     }
+
 
     private function salvarPedido(array $detail, ?array $escrow = null)
-{
+    {
+        
+        $orderSn = $detail['order_sn'];
     
-    $orderSn = $detail['order_sn'];
- Log::info('[ShopeeOrderService] Iniciando gravação do pedido no banco', ['order_sn' => $orderSn]);
 
+        $codigoRastreio = null;
 
-    /*
-     * Valor pago pelo cliente
-     */
-    $valorTotal = 0;
+        foreach ($detail['package_list'] ?? [] as $package) {
 
-    if (isset($detail['payment_info'][0]['payment_amount'])) {
+            $packageNumber = $package['package_number'] ?? null;
 
-        $valorTotal = $detail['payment_info'][0]['payment_amount'];
-
-    }
-
-
-
-    /*
-     * Calcula valor dos produtos
-     */
-    $valorProdutos = 0;
-
-    foreach ($detail['item_list'] ?? [] as $item) {
-
-        $valorProdutos +=
-
-            (
-                $item['model_discounted_price']
-                ?? 0
-            )
-
-            *
-
-            (
-                $item['model_quantity_purchased']
-                ?? 1
-            );
-
-    }
-
-
-
-    /*
-     * Dados financeiros Shopee
-     */
-    $taxasMarketplace = 0;
-
-    $valorRepasse = 0;
-
-
-    if ($escrow) {
-
-        $income = $escrow['order_income'] ?? [];
-
-
-        $taxasMarketplace =
-
-            ($income['commission_fee'] ?? 0)
-
-            +
-
-            ($income['service_fee'] ?? 0)
-
-            +
-
-            ($income['seller_transaction_fee'] ?? 0);
-
-
-
-        $valorRepasse =
-            $income['escrow_amount']
-            ?? 0;
-
-    }
-
-
-
-    /*
-     * Cria ou atualiza pedido
-     */
-    try {
-            /*
-             * Cria ou atualiza pedido
-             */
-            $pedido = Pedido::updateOrCreate(
-                ['pedido_externo' => $orderSn],
-                [
-                    'origem' => 'shopee',
-                    'status_marketplace' => $detail['order_status'] ?? null,
-                    'usuario_cliente' => $detail['buyer_username'] ?? null,
-                    'valor_total' => $valorTotal,
-                    'valor_produtos' => $valorProdutos,
-                    'taxas_marketplace' => $taxasMarketplace,
-                    'valor_repasse' => $valorRepasse,
-                    'custo_total' => 0,
-                    'lucro_bruto' => 0,
-                    'transportadora' => $detail['shipping_carrier'] ?? null,
-                    'endereco_entrega' => isset($detail['recipient_address']) ? json_encode($detail['recipient_address']) : null,
-                    'data_pedido' => isset($detail['create_time']) ? date('Y-m-d H:i:s', $detail['create_time']) : null,
-                    'dados_marketplace' => json_encode($detail) // Garante conversão para JSON
-                ]
-            );
-
-            Log::info('[ShopeeOrderService] Pedido salvo/atualizado na tabela "pedidos"', [
-                'id' => $pedido->id,
-                'pedido_externo' => $pedido->pedido_externo
-            ]);
-
-            /*
-             * Recria itens
-             */
-            $pedido->itens()->delete();
-
-            $custoTotal = 0;
-
-            foreach ($detail['item_list'] ?? [] as $item) {
-                $produto = null;
-                $variacao = null;
-
-                if (!empty($item['model_id'])) {
-                    $variacao = ProductVariation::where('shopee_model_id', $item['model_id'])->first();
-                    if ($variacao) {
-                        $produto = $variacao->produto;
-                    }
-                }
-
-                if (!$produto) {
-                    $produto = Product::where('shopee_item_id', $item['item_id'] ?? 0)->first();
-                }
-
-                $custoUnitario = $variacao->custo ?? ($produto->preco_custo ?? 0);
-                $quantidade = $item['model_quantity_purchased'] ?? 1;
-                $custoItem = $custoUnitario * $quantidade;
-                $custoTotal += $custoItem;
-
-                $valorItem = ($item['model_discounted_price'] ?? 0) * $quantidade;
-
-                PedidoItem::create([
-                    'pedido_id' => $pedido->id,
-                    'produto_id' => $produto?->id,
-                    'product_variation_id' => $variacao?->id,
-                    'marketplace_item_id' => $item['item_id'] ?? null,
-                    'marketplace_model_id' => $item['model_id'] ?? null,
-                    'nome_produto' => $item['item_name'] ?? '',
-                    'sku_marketplace' => $item['model_sku'] ?? null,
-                    'variacao' => $item['model_name'] ?? null,
-                    'quantidade' => $quantidade,
-                    'preco_unitario' => $item['model_discounted_price'] ?? 0,
-                    'valor_total' => $valorItem,
-                    'custo' => $custoItem,
-                    'lucro' => $valorItem - $custoItem,
-                    'dados_marketplace' => json_encode($item) // Garante conversão para JSON
-                ]);
+            if (empty($packageNumber)) {
+                continue;
             }
 
             /*
-             * Atualiza financeiro final
-             */
-            $pedido->update([
-                'custo_total' => $custoTotal,
-                'lucro_bruto' => $valorRepasse - $custoTotal,
-            ]);
+            * A API get_order_detail fornece o package_number,
+            * mas o tracking_number é obtido pela API logística.
+            */
+            $codigoRastreio = $this->getTrackingNumber(
+                $orderSn,
+                $packageNumber
+            );
 
-            return $pedido;
-
-        } catch (\Throwable $e) {
-            Log::error('[ShopeeOrderService] ERRO ao salvar pedido no Banco de Dados', [
-                'order_sn' => $orderSn,
-                'mensagem' => $e->getMessage(),
-                'linha' => $e->getLine(),
-                'arquivo' => $e->getFile()
-            ]);
-            throw $e;
+            if (!empty($codigoRastreio)) {
+                break;
+            }
         }
-}
+
+        Log::info(
+            '[ShopeeOrderService] Código de rastreio identificado',
+            [
+                'order_sn' => $orderSn,
+                'codigo_rastreio' => $codigoRastreio,
+            ]
+        );
+
+
+
+
+
+        Log::info('[ShopeeOrderService] Iniciando gravação do pedido no banco', ['order_sn' => $orderSn]);
+
+
+        /*
+        * Valor pago pelo cliente
+        */
+        $valorTotal = 0;
+
+        if (isset($detail['payment_info'][0]['payment_amount'])) {
+
+            $valorTotal = $detail['payment_info'][0]['payment_amount'];
+
+        }
+
+
+
+        /*
+        * Calcula valor dos produtos
+        */
+        $valorProdutos = 0;
+
+        foreach ($detail['item_list'] ?? [] as $item) {
+
+            $valorProdutos +=
+
+                (
+                    $item['model_discounted_price']
+                    ?? 0
+                )
+
+                *
+
+                (
+                    $item['model_quantity_purchased']
+                    ?? 1
+                );
+
+        }
+
+
+
+        /*
+        * Dados financeiros Shopee
+        */
+        $taxasMarketplace = 0;
+
+        $valorRepasse = 0;
+
+
+        if ($escrow) {
+
+            $income = $escrow['order_income'] ?? [];
+
+
+            $taxasMarketplace =
+
+                ($income['commission_fee'] ?? 0)
+
+                +
+
+                ($income['service_fee'] ?? 0)
+
+                +
+
+                ($income['seller_transaction_fee'] ?? 0);
+
+
+
+            $valorRepasse =
+                $income['escrow_amount']
+                ?? 0;
+
+        }
+        /*
+        * Cria ou atualiza pedido
+        */
+        try {
+                /*
+                * Cria ou atualiza pedido
+                */
+            
+                $pedido = Pedido::updateOrCreate(
+                    ['pedido_externo' => $orderSn],
+                    [
+                        'origem' => 'shopee',
+
+                        'status_marketplace' =>
+                            $detail['order_status'] ?? null,
+
+                        'usuario_cliente' =>
+                            $detail['buyer_username'] ?? null,
+
+                        'valor_total' =>
+                            $valorTotal,
+
+                        'valor_produtos' =>
+                            $valorProdutos,
+
+                        'taxas_marketplace' =>
+                            $taxasMarketplace,
+
+                        'valor_repasse' =>
+                            $valorRepasse,
+
+                        'custo_total' =>
+                            0,
+
+                        'lucro_bruto' =>
+                            0,
+
+                        'transportadora' =>
+                            $detail['shipping_carrier'] ?? null,
+
+                        /*
+                        * Código de rastreio obtido da Shopee
+                        */
+                        'codigo_rastreio' =>
+                            $codigoRastreio,
+
+                        'endereco_entrega' =>
+                            isset($detail['recipient_address'])
+                                ? json_encode($detail['recipient_address'])
+                                : null,
+
+                        'data_pedido' =>
+                            isset($detail['create_time'])
+                                ? date('Y-m-d H:i:s', $detail['create_time'])
+                                : null,
+
+                        'dados_marketplace' =>
+                            json_encode($detail),
+                    ]
+                );
+
+
+                Log::info('[ShopeeOrderService] Pedido salvo/atualizado na tabela "pedidos"', [
+                    'id' => $pedido->id,
+                    'pedido_externo' => $pedido->pedido_externo
+                ]);
+
+                /*
+                * Recria itens
+                */
+                $pedido->itens()->delete();
+
+                $custoTotal = 0;
+
+                foreach ($detail['item_list'] ?? [] as $item) {
+                    $produto = null;
+                    $variacao = null;
+
+                    if (!empty($item['model_id'])) {
+                        $variacao = ProductVariation::where('shopee_model_id', $item['model_id'])->first();
+                        if ($variacao) {
+                            $produto = $variacao->produto;
+                        }
+                    }
+
+                    if (!$produto) {
+                        $produto = Product::where('shopee_item_id', $item['item_id'] ?? 0)->first();
+                    }
+
+                    $custoUnitario = $variacao->custo ?? ($produto->preco_custo ?? 0);
+                    $quantidade = $item['model_quantity_purchased'] ?? 1;
+                    $custoItem = $custoUnitario * $quantidade;
+                    $custoTotal += $custoItem;
+
+                    $valorItem = ($item['model_discounted_price'] ?? 0) * $quantidade;
+
+                    PedidoItem::create([
+                        'pedido_id' => $pedido->id,
+                        'produto_id' => $produto?->id,
+                        'product_variation_id' => $variacao?->id,
+                        'marketplace_item_id' => $item['item_id'] ?? null,
+                        'marketplace_model_id' => $item['model_id'] ?? null,
+                        'nome_produto' => $item['item_name'] ?? '',
+                        'sku_marketplace' => $item['model_sku'] ?? null,
+                        'variacao' => $item['model_name'] ?? null,
+                        'quantidade' => $quantidade,
+                        'preco_unitario' => $item['model_discounted_price'] ?? 0,
+                        'valor_total' => $valorItem,
+                        'custo' => $custoItem,
+                        'lucro' => $valorItem - $custoItem,
+                        'dados_marketplace' => json_encode($item) // Garante conversão para JSON
+                    ]);
+                }
+
+                /*
+                * Atualiza financeiro final
+                */
+                $pedido->update([
+                    'custo_total' => $custoTotal,
+                    'lucro_bruto' => $valorRepasse - $custoTotal,
+                ]);
+
+                return $pedido;
+
+            } catch (\Throwable $e) {
+                Log::error('[ShopeeOrderService] ERRO ao salvar pedido no Banco de Dados', [
+                    'order_sn' => $orderSn,
+                    'mensagem' => $e->getMessage(),
+                    'linha' => $e->getLine(),
+                    'arquivo' => $e->getFile()
+                ]);
+                throw $e;
+            }
+    }
+
+    /**
+     * Busca o código de rastreio de um pacote na Shopee
+     */
+    private function getTrackingNumber(
+        string $orderSn,
+        string $packageNumber
+    ): ?string {
+
+        Log::info(
+            '[ShopeeOrderService] Buscando tracking number',
+            [
+                'order_sn' => $orderSn,
+                'package_number' => $packageNumber,
+            ]
+        );
+
+        $response = $this->api->get(
+            '/api/v2/logistics/get_tracking_number',
+            [
+                'order_sn' => $orderSn,
+                'package_number' => $packageNumber,
+            ]
+        );
+
+        Log::info(
+            '[ShopeeOrderService] Resposta get_tracking_number',
+            [
+                'order_sn' => $orderSn,
+                'package_number' => $packageNumber,
+                'response' => $response,
+            ]
+        );
+
+        if (
+            isset($response['error']) &&
+            $response['error']
+        ) {
+
+            Log::error(
+                '[ShopeeOrderService] Erro ao buscar tracking number',
+                [
+                    'order_sn' => $orderSn,
+                    'package_number' => $packageNumber,
+                    'response' => $response,
+                ]
+            );
+
+            return null;
+        }
+
+        return $response['response']['tracking_number']
+            ?? null;
+    }
+
 
 private function getEscrowDetailBatch(array $orderSns): array
 {
@@ -451,6 +585,7 @@ private function getEscrowDetailBatch(array $orderSns): array
     return $response['response'] ?? [];
 
 }
+
 
 
 }

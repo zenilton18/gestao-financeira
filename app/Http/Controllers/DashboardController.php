@@ -3,25 +3,53 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conta;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $mesAtual = Carbon::now()->month;
-        $anoAtual = Carbon::now()->year;
-        $hoje = Carbon::today()->toDateString();
+        $agora = Carbon::now();
 
-        // Filtro selecionado pelo usuário
+        $mesAtual = $agora->month;
+        $anoAtual = $agora->year;
+        $hoje = $agora->copy()->startOfDay();
+
+        /*
+         * =========================================================
+         * FILTROS DO DASHBOARD
+         * =========================================================
+         */
+
         $filtro = $request->get('filtro');
+
+        $periodo = $request->get('periodo', 'mes');
+
+        if (!in_array($periodo, ['dia', 'semana', 'mes'])) {
+            $periodo = 'mes';
+        }
+
+        /*
+         * Data selecionada no gráfico.
+         *
+         * Se não vier nenhuma data, usamos hoje.
+         */
+        $dataSelecionada = $request->get('data');
+
+        try {
+            $dataSelecionada = $dataSelecionada
+                ? Carbon::parse($dataSelecionada)->startOfDay()
+                : $hoje->copy();
+        } catch (\Exception $e) {
+            $dataSelecionada = $hoje->copy();
+        }
+
 
         // =========================================================
         // 1. MÉTRICAS DO MÊS
         // =========================================================
 
-        // Total recebido no mês
         $totalRecebidoMensal = Conta::apenasFinanceiro()
             ->where('tipo', 'receber')
             ->where('status', 'pago')
@@ -29,7 +57,7 @@ class DashboardController extends Controller
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
-        // Total pago no mês
+
         $totalPagoMensal = Conta::apenasFinanceiro()
             ->where('tipo', 'pagar')
             ->where('status', 'pago')
@@ -37,10 +65,10 @@ class DashboardController extends Controller
             ->whereYear('data_vencimento', $anoAtual)
             ->sum('valor');
 
-        // Saldo atual
+
         $saldoAtual = $totalRecebidoMensal - $totalPagoMensal;
 
-        // Total pendente no mês
+
         $totalPendenteMensal = Conta::apenasFinanceiro()
             ->where('status', 'pendente')
             ->whereMonth('data_vencimento', $mesAtual)
@@ -48,9 +76,8 @@ class DashboardController extends Controller
             ->sum('valor');
 
 
-
         // =========================================================
-        // 2. MOVIMENTAÇÕES DO DIA
+        // 2. MOVIMENTAÇÕES DE HOJE
         // =========================================================
 
         $entradasHoje = Conta::apenasFinanceiro()
@@ -59,14 +86,16 @@ class DashboardController extends Controller
             ->whereDate('data_vencimento', $hoje)
             ->sum('valor');
 
+
         $saidasHoje = Conta::apenasFinanceiro()
             ->where('tipo', 'pagar')
             ->where('status', 'pago')
             ->whereDate('data_vencimento', $hoje)
             ->sum('valor');
 
+
         // =========================================================
-        // 3. ORIGEM DE ENTRADAS FINANCEIRAS
+        // 3. ORIGEM DAS ENTRADAS
         // =========================================================
 
         $faturamentoOrigem = [
@@ -88,6 +117,7 @@ class DashboardController extends Controller
                 ->where('status', 'pago')
                 ->sum('valor'),
         ];
+
 
         // =========================================================
         // 4. MÉTRICAS DE PRODUTOS
@@ -117,19 +147,203 @@ class DashboardController extends Controller
                 ->sum('quantidade'),
         ];
 
+
         // =========================================================
-        // 5. LISTAGEM DINÂMICA DOS LANÇAMENTOS
+        // 5. GRÁFICO FINANCEIRO
+        //
+        // DIA    = mostra os lançamentos do dia selecionado
+        // SEMANA = mostra cada dia da semana selecionada
+        // MÊS    = mostra cada dia do mês atual
+        // =========================================================
+
+        $labelsGrafico = [];
+        $entradasGrafico = [];
+        $saidasGrafico = [];
+
+        $datasGrafico = [];
+
+
+        // ---------------------------------------------------------
+        // PERÍODO DIA
+        // ---------------------------------------------------------
+
+        if ($periodo === 'dia') {
+
+            $inicio = $dataSelecionada->copy()->startOfDay();
+            $fim = $dataSelecionada->copy()->endOfDay();
+
+            $datasGrafico[] = $dataSelecionada->copy();
+
+            $labelsGrafico[] = $dataSelecionada->format('d/m');
+
+        }
+
+
+        // ---------------------------------------------------------
+        // PERÍODO SEMANA
+        // ---------------------------------------------------------
+
+        elseif ($periodo === 'semana') {
+
+            $inicio = $dataSelecionada->copy()->startOfWeek();
+            $fim = $dataSelecionada->copy()->endOfWeek();
+
+            $data = $inicio->copy();
+
+            while ($data->lte($fim)) {
+
+                $datasGrafico[] = $data->copy();
+
+                $labelsGrafico[] = $data->format('d/m');
+
+                $data->addDay();
+            }
+
+        }
+
+
+        // ---------------------------------------------------------
+        // PERÍODO MÊS
+        // ---------------------------------------------------------
+
+        else {
+
+            $inicio = $agora->copy()->startOfMonth();
+            $fim = $agora->copy()->endOfMonth();
+
+            $data = $inicio->copy();
+
+            while ($data->lte($fim)) {
+
+                $datasGrafico[] = $data->copy();
+
+                $labelsGrafico[] = $data->format('d');
+
+                $data->addDay();
+            }
+        }
+
+
+        /*
+         * Busca todas as movimentações necessárias
+         * de uma única vez.
+         */
+
+        $movimentacoesGrafico = Conta::apenasFinanceiro()
+            ->where('status', 'pago')
+            ->whereBetween('data_vencimento', [
+                $inicio->toDateString(),
+                $fim->toDateString(),
+            ])
+            ->get();
+
+
+        /*
+         * Monta os valores de cada dia.
+         */
+
+        foreach ($datasGrafico as $data) {
+
+            $dataString = $data->format('Y-m-d');
+
+            $entrada = $movimentacoesGrafico
+                ->where('tipo', 'receber')
+                ->filter(function ($item) use ($dataString) {
+                    return Carbon::parse($item->data_vencimento)
+                        ->format('Y-m-d') === $dataString;
+                })
+                ->sum('valor');
+
+
+            $saida = $movimentacoesGrafico
+                ->where('tipo', 'pagar')
+                ->filter(function ($item) use ($dataString) {
+                    return Carbon::parse($item->data_vencimento)
+                        ->format('Y-m-d') === $dataString;
+                })
+                ->sum('valor');
+
+
+            $entradasGrafico[] = (float) $entrada;
+
+            $saidasGrafico[] = (float) $saida;
+        }
+
+
+        // =========================================================
+        // 6. DADOS DO DIA/SEMANA/MÊS SELECIONADO
+        // =========================================================
+
+        if ($periodo === 'dia') {
+
+            $inicioSelecionado = $dataSelecionada->copy()->startOfDay();
+            $fimSelecionado = $dataSelecionada->copy()->endOfDay();
+
+        } elseif ($periodo === 'semana') {
+
+            $inicioSelecionado = $dataSelecionada->copy()->startOfWeek();
+            $fimSelecionado = $dataSelecionada->copy()->endOfWeek();
+
+        } else {
+
+            $inicioSelecionado = $dataSelecionada->copy()->startOfMonth();
+            $fimSelecionado = $dataSelecionada->copy()->endOfMonth();
+        }
+
+
+        /*
+         * Entradas do período selecionado.
+         */
+
+        $entradasDataSelecionada = Conta::apenasFinanceiro()
+            ->where('tipo', 'receber')
+            ->where('status', 'pago')
+            ->whereBetween('data_vencimento', [
+                $inicioSelecionado->toDateString(),
+                $fimSelecionado->toDateString(),
+            ])
+            ->sum('valor');
+
+
+        /*
+         * Saídas do período selecionado.
+         */
+
+        $saidasDataSelecionada = Conta::apenasFinanceiro()
+            ->where('tipo', 'pagar')
+            ->where('status', 'pago')
+            ->whereBetween('data_vencimento', [
+                $inicioSelecionado->toDateString(),
+                $fimSelecionado->toDateString(),
+            ])
+            ->sum('valor');
+
+
+        /*
+         * Lançamentos do período selecionado.
+         */
+
+        $lancamentosDataSelecionada = Conta::apenasFinanceiro()
+            ->whereBetween('data_vencimento', [
+                $inicioSelecionado->toDateString(),
+                $fimSelecionado->toDateString(),
+            ])
+            ->orderBy('data_vencimento')
+            ->orderBy('created_at')
+            ->get();
+
+
+        // =========================================================
+        // 7. LISTAGEM PRINCIPAL
         // =========================================================
 
         $queryLancamentos = Conta::query();
-      
+
 
         switch ($filtro) {
 
-            // -----------------------------------------------------
-            // RECEBIDO NO MÊS
-            // -----------------------------------------------------
             case 'recebido':
+
                 $queryLancamentos
                     ->apenasFinanceiro()
                     ->where('tipo', 'receber')
@@ -139,10 +353,9 @@ class DashboardController extends Controller
 
                 break;
 
-            // -----------------------------------------------------
-            // PAGO NO MÊS
-            // -----------------------------------------------------
+
             case 'pago':
+
                 $queryLancamentos
                     ->apenasFinanceiro()
                     ->where('tipo', 'pagar')
@@ -152,10 +365,9 @@ class DashboardController extends Controller
 
                 break;
 
-            // -----------------------------------------------------
-            // PENDENTE NO MÊS
-            // -----------------------------------------------------
+
             case 'pendente':
+
                 $queryLancamentos
                     ->apenasFinanceiro()
                     ->where('status', 'pendente')
@@ -164,10 +376,9 @@ class DashboardController extends Controller
 
                 break;
 
-            // -----------------------------------------------------
-            // FATURAMENTO DE PRODUTOS DO MÊS
-            // -----------------------------------------------------
+
             case 'produtos_mes':
+
                 $queryLancamentos
                     ->apenasVendasProdutos()
                     ->where('status', 'pago')
@@ -176,10 +387,9 @@ class DashboardController extends Controller
 
                 break;
 
-            // -----------------------------------------------------
-            // VENDAS DE PRODUTOS DE HOJE
-            // -----------------------------------------------------
+
             case 'produtos_hoje':
+
                 $queryLancamentos
                     ->apenasVendasProdutos()
                     ->where('status', 'pago')
@@ -187,66 +397,76 @@ class DashboardController extends Controller
 
                 break;
 
-            // -----------------------------------------------------
-            // SEM FILTRO
-            // -----------------------------------------------------
+
             default:
+
                 $queryLancamentos = Conta::query();
+
                 break;
         }
 
-        // Se houver filtro, mostra até 50 registros.
-        // Sem filtro, mantém o comportamento anterior de mostrar 5.
+
         if ($filtro) {
+
             $ultimosLancamentos = $queryLancamentos
                 ->orderBy('data_vencimento', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->take(50)
                 ->get();
+
         } else {
+
             $ultimosLancamentos = Conta::orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
         }
 
+
         // =========================================================
-        // 6. FATURAMENTO POR DIA DO MÊS
+        // 8. RETORNO DA VIEW
         // =========================================================
-
-        $faturamentoPorDia = Conta::apenasFinanceiro()
-            ->where('tipo', 'receber')
-            ->where('status', 'pago')
-            ->whereMonth('data_vencimento', $mesAtual)
-            ->whereYear('data_vencimento', $anoAtual)
-            ->whereDate('data_vencimento', '<=', $hoje)
-            ->selectRaw('DAY(data_vencimento) as dia, SUM(valor) as total')
-            ->groupByRaw('DAY(data_vencimento)')
-            ->orderByRaw('DAY(data_vencimento)')
-            ->get();
-
-        $labelsFaturamento = [];
-        $valoresFaturamento = [];
-
-        foreach ($faturamentoPorDia as $item) {
-            $labelsFaturamento[] = str_pad($item->dia, 2, '0', STR_PAD_LEFT);
-            $valoresFaturamento[] = (float) $item->total;
-        }
-
-
 
         return view('dashboard', compact(
+
             'saldoAtual',
+
             'totalRecebidoMensal',
+
             'totalPagoMensal',
+
             'totalPendenteMensal',
+
             'entradasHoje',
+
             'saidasHoje',
+
             'faturamentoOrigem',
+
             'produtosMetricas',
+
             'ultimosLancamentos',
+
             'filtro',
-            'labelsFaturamento',
-            'valoresFaturamento'
+
+            'periodo',
+
+            'dataSelecionada',
+
+            'labelsGrafico',
+
+            'entradasGrafico',
+
+            'saidasGrafico',
+
+            'entradasDataSelecionada',
+
+            'saidasDataSelecionada',
+
+            'lancamentosDataSelecionada',
+
+            'inicioSelecionado',
+
+            'fimSelecionado'
         ));
     }
 }

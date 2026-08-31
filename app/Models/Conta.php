@@ -36,10 +36,12 @@ class Conta extends Model
      */
     public function scopeApenasFinanceiro($query)
     {
-        return $query->where(function ($q) {
-            $q->whereNull('centro_custo')
-              ->orWhere('centro_custo', '!=', 'venda_produtos');
-        });
+        return $query
+            ->where(function ($q) {
+                $q->whereNull('centro_custo')
+                ->orWhere('centro_custo', '!=', 'venda_produtos');
+            })
+            ;
     }
 
     /**
